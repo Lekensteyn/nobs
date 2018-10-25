@@ -1,5 +1,7 @@
 package csidh
 
+// P511
+
 const (
 	pbits = 511
 	p     = []byte{
