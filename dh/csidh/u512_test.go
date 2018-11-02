@@ -63,7 +63,7 @@ func TestFp512Add3_Nominal(t *testing.T) {
 	// modulus: 2^512
 	mod.SetUint64(1).Lsh(&mod, 512)
 
-	for i:=0; i< kNumIter; i++ {
+	for i := 0; i < kNumIter; i++ {
 		a := randomU512()
 		bigA, _ := new(big.Int).SetString(u512toS(a), 16)
 		b := randomU512()
@@ -93,7 +93,7 @@ func TestFp512Add3_ReturnsCarry(t *testing.T) {
 		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
 		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
 		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF}
-	if fp512Add3(&a,&b,&c) != 1 {
+	if fp512Add3(&a, &b, &c) != 1 {
 		t.Error("Carry not returned")
 	}
 }
@@ -115,7 +115,7 @@ func TestFp512Add3_DoesntReturnCarry(t *testing.T) {
 		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
 		0xFFFFFFFFFFFFFFFA, 0}
 
-	if fp512Add3(&a,&b,&c) != 0 {
+	if fp512Add3(&a, &b, &c) != 0 {
 		t.Error("Carry returned")
 	}
 }
@@ -126,7 +126,7 @@ func TestFp512Sub3_Nominal(t *testing.T) {
 	// modulus: 2^512
 	mod.SetUint64(1).Lsh(&mod, 512)
 
-	for i:=0; i< kNumIter; i++ {
+	for i := 0; i < kNumIter; i++ {
 		a := randomU512()
 		bigA, _ := new(big.Int).SetString(u512toS(a), 16)
 		b := randomU512()
@@ -157,7 +157,7 @@ func TestFp512Sub3_DoesntReturnCarry(t *testing.T) {
 		0, 0,
 		0, 0}
 
-	if fp512Sub3(&a,&b,&c) != 1 {
+	if fp512Sub3(&a, &b, &c) != 1 {
 		t.Error("Carry not returned")
 	}
 }
@@ -175,7 +175,7 @@ func TestFp512Sub3_ReturnsCarry(t *testing.T) {
 		0, 0,
 		0, 0}
 
-	if fp512Sub3(&a,&b,&c) != 0 {
+	if fp512Sub3(&a, &b, &c) != 0 {
 		t.Error("Carry not returned")
 	}
 }
@@ -184,23 +184,23 @@ func BenchmarkFp512Add(b *testing.B) {
 	var arg1 u512
 	arg2 := randomU512()
 	arg3 := randomU512()
-	for n:=0; n < b.N; n++ {
+	for n := 0; n < b.N; n++ {
 		fp512Add3(&arg1, &arg2, &arg3)
 	}
 }
 
 func BenchmarkFp512Sub(b *testing.B) {
 	var arg1 u512
-	arg2,arg3 := randomU512(), randomU512()
-	for n:=0; n < b.N; n++ {
+	arg2, arg3 := randomU512(), randomU512()
+	for n := 0; n < b.N; n++ {
 		fp512Sub3(&arg1, &arg2, &arg3)
 	}
 }
 
 func BenchmarkFp512Mul(b *testing.B) {
 	var arg1 = mrand.Uint64()
-	arg2,arg3 := randomU512(), randomU512()
-	for n:=0; n < b.N; n++ {
+	arg2, arg3 := randomU512(), randomU512()
+	for n := 0; n < b.N; n++ {
 		fp512Mul3(&arg2, &arg3, arg1)
 	}
 }
