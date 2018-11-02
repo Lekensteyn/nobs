@@ -56,3 +56,151 @@ func TestFp512Mul3_Nominal(t *testing.T) {
 		}
 	}
 }
+
+func TestFp512Add3_Nominal(t *testing.T) {
+	var ret u512
+	var mod big.Int
+	// modulus: 2^512
+	mod.SetUint64(1).Lsh(&mod, 512)
+
+	for i:=0; i< kNumIter; i++ {
+		a := randomU512()
+		bigA, _ := new(big.Int).SetString(u512toS(a), 16)
+		b := randomU512()
+		bigB, _ := new(big.Int).SetString(u512toS(b), 16)
+
+		fp512Add3(&ret, &a, &b)
+		bigRet, _ := new(big.Int).SetString(u512toS(ret), 16)
+		bigA.Add(bigA, bigB)
+		// Truncate to 512 bits
+		bigA.Mod(bigA, &mod)
+
+		if bigRet.Cmp(bigA) != 0 {
+			t.Errorf("%X != %X", bigRet, bigA)
+		}
+	}
+}
+
+func TestFp512Add3_ReturnsCarry(t *testing.T) {
+	a := u512{}
+	b := u512{
+		0, 0,
+		0, 0,
+		0, 0,
+		0, 1}
+	c := u512{
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF}
+	if fp512Add3(&a,&b,&c) != 1 {
+		t.Error("Carry not returned")
+	}
+}
+
+func TestFp512Add3_DoesntReturnCarry(t *testing.T) {
+	a := u512{
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF}
+	b := u512{
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0}
+	c := u512{
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFA, 0}
+
+	if fp512Add3(&a,&b,&c) != 0 {
+		t.Error("Carry returned")
+	}
+}
+
+func TestFp512Sub3_Nominal(t *testing.T) {
+	var ret u512
+	var mod big.Int
+	// modulus: 2^512
+	mod.SetUint64(1).Lsh(&mod, 512)
+
+	for i:=0; i< kNumIter; i++ {
+		a := randomU512()
+		bigA, _ := new(big.Int).SetString(u512toS(a), 16)
+		b := randomU512()
+		bigB, _ := new(big.Int).SetString(u512toS(b), 16)
+
+		fp512Sub3(&ret, &a, &b)
+		bigRet, _ := new(big.Int).SetString(u512toS(ret), 16)
+		bigA.Sub(bigA, bigB)
+		// Truncate to 512 bits
+		bigA.Mod(bigA, &mod)
+
+		if bigRet.Cmp(bigA) != 0 {
+			t.Errorf("%X != %X", bigRet, bigA)
+		}
+	}
+}
+
+func TestFp512Sub3_DoesntReturnCarry(t *testing.T) {
+	a := u512{}
+	b := u512{
+		0xFFFFFFFFFFFFFFFF, 1,
+		0, 0,
+		0, 0,
+		0, 0}
+	c := u512{
+		0xFFFFFFFFFFFFFFFF, 2,
+		0, 0,
+		0, 0,
+		0, 0}
+
+	if fp512Sub3(&a,&b,&c) != 1 {
+		t.Error("Carry not returned")
+	}
+}
+
+func TestFp512Sub3_ReturnsCarry(t *testing.T) {
+	a := u512{}
+	b := u512{
+		0xFFFFFFFFFFFFFFFF, 2,
+		0, 0,
+		0, 0,
+		0, 0}
+	c := u512{
+		0xFFFFFFFFFFFFFFFF, 1,
+		0, 0,
+		0, 0,
+		0, 0}
+
+	if fp512Sub3(&a,&b,&c) != 0 {
+		t.Error("Carry not returned")
+	}
+}
+
+func BenchmarkFp512Add(b *testing.B) {
+	var arg1 u512
+	arg2 := randomU512()
+	arg3 := randomU512()
+	for n:=0; n < b.N; n++ {
+		fp512Add3(&arg1, &arg2, &arg3)
+	}
+}
+
+func BenchmarkFp512Sub(b *testing.B) {
+	var arg1 u512
+	arg2,arg3 := randomU512(), randomU512()
+	for n:=0; n < b.N; n++ {
+		fp512Sub3(&arg1, &arg2, &arg3)
+	}
+}
+
+func BenchmarkFp512Mul(b *testing.B) {
+	var arg1 = mrand.Uint64()
+	arg2,arg3 := randomU512(), randomU512()
+	for n:=0; n < b.N; n++ {
+		fp512Mul3(&arg2, &arg3, arg1)
+	}
+}
