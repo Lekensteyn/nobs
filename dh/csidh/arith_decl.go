@@ -4,8 +4,22 @@ package csidh
 type u512mont struct {
 }
 
+// u512 specific functions
+
 // go:noescape
-func fp_set(x u512mont, y uint64)
+func mul512(a, b *u512, c uint64)
+
+// go:noescape
+func add512(x, y, z *u512) uint64
+
+// go:noescape
+func sub512(x, y, z *u512) uint64
+
+// go:noescape
+func cswap512(x, y *u512, choice uint8)
+
+// go:noescape
+//func fp_set(x u512mont, y uint64)
 
 //
 // //go:noescape

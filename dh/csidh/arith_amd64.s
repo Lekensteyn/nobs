@@ -17,8 +17,8 @@ TEXT ·fp512Set(SB), NOSPLIT, $0-8
 // Multipies 512-bit value by 64-bit value. Uses MULX instruction
 // x = y * z
 //
-// func fp512Mul3(a, b *u512, c uint64)
-TEXT ·fp512Mul3(SB), NOSPLIT, $0-24
+// func mul512(a, b *u512, c uint64)
+TEXT ·mul512(SB), NOSPLIT, $0-24
 	MOVQ	x+ 0(FP), DI	// result
 	MOVQ	y+ 8(FP), SI	// multiplicand
 	MOVQ	z+16(FP), DX	// 64 byte multiplier
@@ -57,11 +57,11 @@ TEXT ·fp512Mul3(SB), NOSPLIT, $0-24
 	RET
 
 // x = y + z
-// func fp512Add3(x, y, z *u512) uint64
-TEXT ·fp512Add3(SB), NOSPLIT, $0-32
+// func add512(x, y, z *u512) uint64
+TEXT ·add512(SB), NOSPLIT, $0-32
 	MOVQ	x+ 0(FP), DI	// result
-	MOVQ	y+ 8(FP), SI	//
-	MOVQ	z+16(FP), DX	//
+	MOVQ	y+ 8(FP), SI	// first summand
+	MOVQ	z+16(FP), DX	// second summand
 
 	XORQ	AX, AX
 
@@ -105,11 +105,11 @@ TEXT ·fp512Add3(SB), NOSPLIT, $0-32
 
 
 // x = y - z
-// func fp512Sub3(x, y, z *u512) uint64
-TEXT ·fp512Sub3(SB), NOSPLIT, $0-32
+// func sub512(x, y, z *u512) uint64
+TEXT ·sub512(SB), NOSPLIT, $0-32
 	MOVQ	x+ 0(FP), DI	// result
-	MOVQ	y+ 8(FP), SI	//
-	MOVQ	z+16(FP), DX	//
+	MOVQ	y+ 8(FP), SI	// minuend
+	MOVQ	z+16(FP), DX	// subtrahend
 
 	XORQ	AX, AX
 
@@ -148,5 +148,47 @@ TEXT ·fp512Sub3(SB), NOSPLIT, $0-32
 	// return borrow
 	ADCQ	AX, AX
 	MOVQ	AX, ret+24(FP)
+
+	RET
+
+TEXT ·cswap512(SB),NOSPLIT,$0-17
+	MOVQ    x+0(FP), DI
+	MOVQ    y+8(FP), SI
+    MOVBLZX choice+16(FP), AX       // AL = 0 or 1
+
+	// Make AX, so that either all bits are set or non
+	// AX = 0 or 1
+	NEGQ    AX
+
+	// Fill xmm15. After this step first half of XMM15 is
+	// just zeros and second half is whatever in AX
+	MOVQ    AX, X15
+
+	// Copy lower double word everywhere else. So that
+	// XMM15=AL|AL|AL|AL. As AX has either all bits set
+	// or non result will be that XMM15 has also either
+	// all bits set or non of them.
+	PSHUFD $0, X15, X15
+
+#ifndef CSWAP_BLOCK
+#define CSWAP_BLOCK(idx)       \
+	MOVOU   (idx*16)(DI), X0 \
+	MOVOU   (idx*16)(SI), X1 \
+	\ // X2 = mask & (X0 ^ X1)
+	MOVO     X1, X2 \
+	PXOR     X0, X2 \
+	PAND    X15, X2 \
+	\
+	PXOR     X2, X0 \
+	PXOR     X2, X1 \
+	\
+	MOVOU    X0, (idx*16)(DI) \
+	MOVOU    X1, (idx*16)(SI)
+#endif
+
+	CSWAP_BLOCK(0)
+	CSWAP_BLOCK(1)
+	CSWAP_BLOCK(2)
+	CSWAP_BLOCK(3)
 
 	RET
