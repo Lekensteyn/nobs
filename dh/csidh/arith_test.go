@@ -30,13 +30,14 @@ func randomU512() u512 {
 	return u
 }
 
+// return true if x==y, otherwise false
 func cmp512(x, y *u512) bool {
-	for i := 0; i < 8; i++ {
+	for i, _ := range x {
 		if x[i] != y[i] {
 			return false
 		}
 	}
-	return true
+	return len(*x) == len(*y)
 }
 
 // Check if mul512 produces result
@@ -212,6 +213,37 @@ func TestCswap(t *testing.T) {
 	}
 }
 
+func TestAddRdc(t *testing.T) {
+	var res Fp
+	Fp512 := Fp{v: p}
+
+	tmp := Fp{v: u512{1, 0, 0, 0, 0, 0, 0, 0}}
+	addRdc(&res, &tmp, &Fp512)
+	if !cmp512(&res.v, &tmp.v) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+
+	tmp = Fp{v: u512{0, 0, 0, 0, 0, 0, 0, 0}}
+	addRdc(&res, &Fp512, &Fp512)
+	if !cmp512(&res.v, &Fp512.v) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+
+	tmp = Fp{v: u512{1, 1, 1, 1, 1, 1, 1, 1}}
+	addRdc(&res, &Fp512, &tmp)
+	if !cmp512(&res.v, &tmp.v) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+
+	tmp = Fp{v: u512{1, 1, 1, 1, 1, 1, 1, 1}}
+	exp := Fp{v: u512{2, 2, 2, 2, 2, 2, 2, 2}}
+	addRdc(&res, &tmp, &tmp)
+	if !cmp512(&res.v, &exp.v) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+
+}
+
 func BenchmarkFp512Add(b *testing.B) {
 	var arg1 u512
 	arg2 := randomU512()
@@ -242,5 +274,14 @@ func BenchmarkCSwap(b *testing.B) {
 	arg2 := randomU512()
 	for n := 0; n < b.N; n++ {
 		cswap512(&arg1, &arg2, uint8(n%2))
+	}
+}
+
+func BenchmarkAddRdc(b *testing.B) {
+	arg1 := Fp{v: randomU512()}
+	arg2 := Fp{v: randomU512()}
+	var res Fp
+	for n := 0; n < b.N; n++ {
+		addRdc(&res, &arg1, &arg2)
 	}
 }

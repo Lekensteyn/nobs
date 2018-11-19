@@ -15,6 +15,9 @@ func sub512(x, y, z *u512) uint64
 func cswap512(x, y *u512, choice uint8)
 
 // go:noescape
+func crdc512(x *u512)
+
+// go:noescape
 //func fp_set(x u512mont, y uint64)
 
 //
