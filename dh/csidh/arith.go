@@ -14,7 +14,6 @@ func addRdc(res, x, y *Fp) {
 }
 
 func subRdc(res, x, y *Fp) {
-	res := sub512(&res.v, &x.v, &y.v)
-	//crdc512(&res.v)
-	csubrdc512(&res.v, res)
+	borrow := sub512(&res.v, &x.v, &y.v)
+	csubrdc512(&res.v, borrow)
 }

@@ -7,18 +7,31 @@ import (
 	"testing"
 )
 
-// Number of iterations
+// Commonly used variables
 var (
-	kNumIter    = 10000
+	// Number of interations
+	kNumIter = 10000
+	// Modulus
 	kModulus, _ = new(big.Int).SetString(u512toS(p), 16)
+	// Zero in Fp512
+	ZeroFp512 = Fp{}
+	// One in Fp512
+	OneFp512 = Fp{v: u512{1, 0, 0, 0, 0, 0, 0, 0}}
 )
 
-func u512toS(val u512) string {
+func u512toS(v u512) string {
 	var str string
 	for i := 0; i < 8; i++ {
-		str = fmt.Sprintf("%016x", val[i]) + str
+		str = fmt.Sprintf("%016x", v[i]) + str
 	}
 	return str
+}
+
+// zeroize u512
+func zero(v *u512) {
+	for i, _ := range *v {
+		v[i] = 0
+	}
 }
 
 // returns random value in a range (0,p)
@@ -215,15 +228,15 @@ func TestCswap(t *testing.T) {
 
 func TestAddRdc(t *testing.T) {
 	var res Fp
-	Fp512 := Fp{v: p}
+	var Fp512 = Fp{v: p}
 
-	tmp := Fp{v: u512{1, 0, 0, 0, 0, 0, 0, 0}}
+	tmp := OneFp512
 	addRdc(&res, &tmp, &Fp512)
 	if !cmp512(&res.v, &tmp.v) {
 		t.Errorf("Wrong value\n%X", res.v)
 	}
 
-	tmp = Fp{v: u512{0, 0, 0, 0, 0, 0, 0, 0}}
+	tmp = ZeroFp512
 	addRdc(&res, &Fp512, &Fp512)
 	if !cmp512(&res.v, &Fp512.v) {
 		t.Errorf("Wrong value\n%X", res.v)
@@ -241,7 +254,43 @@ func TestAddRdc(t *testing.T) {
 	if !cmp512(&res.v, &exp.v) {
 		t.Errorf("Wrong value\n%X", res.v)
 	}
+}
 
+func TestSubRdc(t *testing.T) {
+	var res Fp
+	var Fp512 = Fp{v: p}
+
+	// 1 - 1 mod P
+	tmp := OneFp512
+	subRdc(&res, &tmp, &tmp)
+	if !cmp512(&res.v, &ZeroFp512.v) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+	zero(&res.v)
+
+	// 0 - 1 mod P
+	exp := Fp512
+	exp.v[0]--
+
+	subRdc(&res, &ZeroFp512, &OneFp512)
+	if !cmp512(&res.v, &exp.v) {
+		t.Errorf("Wrong value\n%X\n%X", res.v, exp.v)
+	}
+	zero(&res.v)
+
+	// P - (P-1)
+	pMinusOne := Fp512
+	pMinusOne.v[0]--
+	subRdc(&res, &Fp512, &pMinusOne)
+	if !cmp512(&res.v, &OneFp512.v) {
+		t.Errorf("Wrong value\n[%X != %X]", res.v, OneFp512.v)
+	}
+	zero(&res.v)
+
+	subRdc(&res, &Fp512, &OneFp512)
+	if !cmp512(&res.v, &pMinusOne.v) {
+		t.Errorf("Wrong value\n[%X != %X]", res.v, pMinusOne.v)
+	}
 }
 
 func BenchmarkFp512Add(b *testing.B) {
@@ -283,5 +332,14 @@ func BenchmarkAddRdc(b *testing.B) {
 	var res Fp
 	for n := 0; n < b.N; n++ {
 		addRdc(&res, &arg1, &arg2)
+	}
+}
+
+func BenchmarkSubRdc(b *testing.B) {
+	arg1 := Fp{v: randomU512()}
+	arg2 := Fp{v: randomU512()}
+	var res Fp
+	for n := 0; n < b.N; n++ {
+		subRdc(&res, &arg1, &arg2)
 	}
 }
