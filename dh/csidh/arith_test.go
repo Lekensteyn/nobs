@@ -43,14 +43,26 @@ func randomU512() u512 {
 	return u
 }
 
-// return true if x==y, otherwise false
-func cmp512(x, y *u512) bool {
-	for i, _ := range x {
-		if x[i] != y[i] {
-			return false
+// x<y: <0
+// x>y: >0
+// x==y: 0
+func cmp512(x, y *u512) int {
+	if len(*x) == len(*y) {
+		for i := len(*x) - 1; i >= 0; i-- {
+			if x[i] < y[i] {
+				return -1
+			} else if x[i] > y[i] {
+				return 1
+			}
 		}
+		return 0
 	}
-	return len(*x) == len(*y)
+	return len(*x) - len(*y)
+}
+
+// return x==y
+func ceq512(x, y *u512) bool {
+	return cmp512(x, y) == 0
 }
 
 // Check if mul512 produces result
@@ -209,19 +221,19 @@ func TestCswap(t *testing.T) {
 
 	arg1cpy := arg1
 	cswap512(&arg1, &arg2, 0)
-	if !cmp512(&arg1, &arg1cpy) {
+	if !ceq512(&arg1, &arg1cpy) {
 		t.Error("cswap swapped")
 	}
 
 	arg1cpy = arg1
 	cswap512(&arg1, &arg2, 1)
-	if cmp512(&arg1, &arg1cpy) {
+	if ceq512(&arg1, &arg1cpy) {
 		t.Error("cswap didn't swapped")
 	}
 
 	arg1cpy = arg1
 	cswap512(&arg1, &arg2, 0xF2)
-	if cmp512(&arg1, &arg1cpy) {
+	if ceq512(&arg1, &arg1cpy) {
 		t.Error("cswap didn't swapped")
 	}
 }
@@ -232,26 +244,26 @@ func TestAddRdc(t *testing.T) {
 
 	tmp := OneFp512
 	addRdc(&res, &tmp, &Fp512)
-	if !cmp512(&res.v, &tmp.v) {
+	if !ceq512(&res.v, &tmp.v) {
 		t.Errorf("Wrong value\n%X", res.v)
 	}
 
 	tmp = ZeroFp512
 	addRdc(&res, &Fp512, &Fp512)
-	if !cmp512(&res.v, &Fp512.v) {
+	if !ceq512(&res.v, &Fp512.v) {
 		t.Errorf("Wrong value\n%X", res.v)
 	}
 
 	tmp = Fp{v: u512{1, 1, 1, 1, 1, 1, 1, 1}}
 	addRdc(&res, &Fp512, &tmp)
-	if !cmp512(&res.v, &tmp.v) {
+	if !ceq512(&res.v, &tmp.v) {
 		t.Errorf("Wrong value\n%X", res.v)
 	}
 
 	tmp = Fp{v: u512{1, 1, 1, 1, 1, 1, 1, 1}}
 	exp := Fp{v: u512{2, 2, 2, 2, 2, 2, 2, 2}}
 	addRdc(&res, &tmp, &tmp)
-	if !cmp512(&res.v, &exp.v) {
+	if !ceq512(&res.v, &exp.v) {
 		t.Errorf("Wrong value\n%X", res.v)
 	}
 }
@@ -263,7 +275,7 @@ func TestSubRdc(t *testing.T) {
 	// 1 - 1 mod P
 	tmp := OneFp512
 	subRdc(&res, &tmp, &tmp)
-	if !cmp512(&res.v, &ZeroFp512.v) {
+	if !ceq512(&res.v, &ZeroFp512.v) {
 		t.Errorf("Wrong value\n%X", res.v)
 	}
 	zero(&res.v)
@@ -273,7 +285,7 @@ func TestSubRdc(t *testing.T) {
 	exp.v[0]--
 
 	subRdc(&res, &ZeroFp512, &OneFp512)
-	if !cmp512(&res.v, &exp.v) {
+	if !ceq512(&res.v, &exp.v) {
 		t.Errorf("Wrong value\n%X\n%X", res.v, exp.v)
 	}
 	zero(&res.v)
@@ -282,14 +294,66 @@ func TestSubRdc(t *testing.T) {
 	pMinusOne := Fp512
 	pMinusOne.v[0]--
 	subRdc(&res, &Fp512, &pMinusOne)
-	if !cmp512(&res.v, &OneFp512.v) {
+	if !ceq512(&res.v, &OneFp512.v) {
 		t.Errorf("Wrong value\n[%X != %X]", res.v, OneFp512.v)
 	}
 	zero(&res.v)
 
 	subRdc(&res, &Fp512, &OneFp512)
-	if !cmp512(&res.v, &pMinusOne.v) {
+	if !ceq512(&res.v, &pMinusOne.v) {
 		t.Errorf("Wrong value\n[%X != %X]", res.v, pMinusOne.v)
+	}
+}
+
+func TestMulRdc(t *testing.T) {
+	var res Fp
+	var fp1 = Fp{v: fp_1}
+	var m1 = Fp{v: u512{
+		0x85E2579C786882D0, 0x4E3433657E18DA95,
+		0x850AE5507965A0B3, 0xA15BC4E676475964}}
+	var m2 = Fp{v: u512{
+		0x85E2579C786882CF, 0x4E3433657E18DA95,
+		0x850AE5507965A0B3, 0xA15BC4E676475964}}
+
+	// Expected
+	var m1m1 = u512{
+		0xAEBF46E92C88A4B4, 0xCFE857977B946347,
+		0xD3B264FF08493901, 0x6EEB3D23746B6C7C,
+		0xC0CA874A349D64B4, 0x7AD4A38B406F8504,
+		0x38B6B6CEB82472FB, 0x1587015FD7DDFC7D}
+	var m1m2 = u512{
+		0x51534771258C4624, 0x2BFEDE86504E2160,
+		0xE8127D5E9329670B, 0x0C84DBD584491D75,
+		0x656C73C68B16E38C, 0x01C0DA470B30B8DE,
+		0x2532E3903EAA950B, 0x3F2C28EA97FE6FEC}
+
+	// 0*0
+	tmp := ZeroFp512
+	mulRdc(&res, &tmp, &tmp)
+	if !ceq512(&res.v, &tmp.v) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+
+	// 1*m1 == m1
+	zero(&res.v)
+	mulRdc(&res, &m1, &fp1)
+	if !ceq512(&res.v, &m1.v) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+
+	// OZAPTF: I don't understand those results. but they are correct
+	// m1*m2 < p
+	zero(&res.v)
+	mulRdc(&res, &m1, &m2)
+	if !ceq512(&res.v, &m1m2) {
+		t.Errorf("Wrong value\n%X", res.v)
+	}
+
+	// m1*m1 > p
+	zero(&res.v)
+	mulRdc(&res, &m1, &m1)
+	if !ceq512(&res.v, &m1m1) {
+		t.Errorf("Wrong value\n%X", res.v)
 	}
 }
 

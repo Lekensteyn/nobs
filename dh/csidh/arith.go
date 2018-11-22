@@ -17,3 +17,8 @@ func subRdc(res, x, y *Fp) {
 	borrow := sub512(&res.v, &x.v, &y.v)
 	csubrdc512(&res.v, borrow)
 }
+
+func mulRdc(res, x, y *Fp) {
+	mul(&res.v, &x.v, &y.v)
+	crdc512(&res.v)
+}

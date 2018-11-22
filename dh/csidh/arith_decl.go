@@ -21,8 +21,10 @@ func crdc512(x *u512)
 func csubrdc512(x *u512, choice uint64)
 
 // go:noescape
-//func fp_set(x u512mont, y uint64)
+func mul(res, x, y *u512)
 
+// go:noescape
+//func fp_set(x u512mont, y uint64)
 //
 // //go:noescape
 // func fp_cswap(u512mont *x, fp *y, uint8_t c)

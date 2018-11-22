@@ -24,13 +24,13 @@ TEXT ·mul512(SB), NOSPLIT, $0-24
 	MOVQ	z+16(FP), DX	// 64 byte multiplier
 
 	MULXQ	 0(SI), AX, R10;						MOVQ	AX,  0(DI)	// x[0]
-	MULXQ	 8(SI), AX, R11;	ADDQ	R10, AX;	MOVQ	AX,  8(DI)	// x[1]
-	MULXQ	16(SI), AX, R10;	ADCQ	R11, AX;	MOVQ	AX, 16(DI)	// x[2]
-	MULXQ	24(SI), AX, R11;	ADCQ	R10, AX;	MOVQ	AX, 24(DI)	// x[3]
-	MULXQ	32(SI), AX, R10;	ADCQ	R11, AX;	MOVQ	AX, 32(DI)	// x[4]
-	MULXQ	40(SI), AX, R11;	ADCQ	R10, AX;	MOVQ	AX, 40(DI)	// x[5]
-	MULXQ	48(SI), AX, R10;	ADCQ	R11, AX;	MOVQ	AX, 48(DI)	// x[6]
-	MULXQ	56(SI), AX, R11;	ADCQ	R10, AX;	MOVQ	AX, 56(DI)	// x[7]
+	MULXQ	 8(SI), AX, R11; ADDQ	R10, AX; MOVQ	AX,  8(DI) // x[1]
+	MULXQ	16(SI), AX, R10; ADCQ	R11, AX; MOVQ	AX, 16(DI) // x[2]
+	MULXQ	24(SI), AX, R11; ADCQ	R10, AX; MOVQ	AX, 24(DI) // x[3]
+	MULXQ	32(SI), AX, R10; ADCQ	R11, AX; MOVQ	AX, 32(DI) // x[4]
+	MULXQ	40(SI), AX, R11; ADCQ	R10, AX; MOVQ	AX, 40(DI) // x[5]
+	MULXQ	48(SI), AX, R10; ADCQ	R11, AX; MOVQ	AX, 48(DI) // x[6]
+	MULXQ	56(SI), AX, R11; ADCQ	R10, AX; MOVQ	AX, 56(DI) // x[7]
 
 	RET
 
@@ -181,4 +181,82 @@ TEXT ·csubrdc512(SB),NOSPLIT,$0-16
 	MOVQ (48)(DI), DX; ADCQ R14, DX; MOVQ DX, (48)(DI)
 	MOVQ (56)(DI), DX; ADCQ R15, DX; MOVQ DX, (56)(DI)
 
+	RET
+
+// mul function implements montgomery multiplication interleaved with rdc.
+// It takes advantage of the fact that inversion of 'p' has only 64-bits
+//
+// z = x*y mod p
+TEXT ·mul(SB),NOSPLIT,$32-24
+	MOVQ y+ 8(FP), DI // multiplicand
+	MOVQ z+16(FP), SI // multiplier
+
+	XORQ  R8,  R8
+	XORQ  R9,  R9
+	XORQ R10, R10
+	XORQ R11, R11
+	XORQ R12, R12
+	XORQ R13, R13
+	XORQ R14, R14
+	XORQ R15, R15
+
+	MOVQ BP, 24(SP) // OZAPTF: thats maybe wrong
+	XORQ BP, BP
+
+// Uses BMI2 and MULX
+#ifdef MULS_MULX_512
+#undef MULS_MULX_512
+#endif
+#define MULS_MULX_512(idx, r0, r1, r2, r3, r4, r5, r6, r7, r8) \
+	\ // Reduction step
+	MOVQ  ( 0)(SI), DX 		\
+	MULXQ ( 8*idx)(DI), DX, CX 	\
+	ADDQ  r0, DX 			\
+	MULXQ ·pNegInv(SB), DX, CX	\
+	\ // Clean flags
+	XORQ  AX, AX \
+	MULXQ ·p+ 0(SB), AX, BX;             ; ADOXQ AX, r0 \
+	MULXQ ·p+ 8(SB), AX, CX; ADCXQ BX, r1; ADOXQ AX, r1 \
+	MULXQ ·p+16(SB), AX, BX; ADCXQ CX, r2; ADOXQ AX, r2 \
+	MULXQ ·p+24(SB), AX, CX; ADCXQ BX, r3; ADOXQ AX, r3 \
+	MULXQ ·p+32(SB), AX, BX; ADCXQ CX, r4; ADOXQ AX, r4 \
+	MULXQ ·p+40(SB), AX, CX; ADCXQ BX, r5; ADOXQ AX, r5 \
+	MULXQ ·p+48(SB), AX, BX; ADCXQ CX, r6; ADOXQ AX, r6 \
+	MULXQ ·p+56(SB), AX, CX; ADCXQ BX, r7; ADOXQ AX, r7 \
+	MOVQ  $0, AX           ; ADCXQ CX, r8; ADOXQ AX, r8 \
+	\ // Multiplication step
+	MOVQ (8*idx)(DI), DX \
+	\ // Clean flags
+	XORQ  AX, AX \
+	MULXQ ( 0)(SI), AX, BX; ADOXQ AX, r0 \
+	MULXQ ( 8)(SI), AX, CX; ADCXQ BX, r1; ADOXQ AX, r1 \
+	MULXQ (16)(SI), AX, BX; ADCXQ CX, r2; ADOXQ AX, r2 \
+	MULXQ (24)(SI), AX, CX; ADCXQ BX, r3; ADOXQ AX, r3 \
+	MULXQ (32)(SI), AX, BX; ADCXQ CX, r4; ADOXQ AX, r4 \
+	MULXQ (40)(SI), AX, CX; ADCXQ BX, r5; ADOXQ AX, r5 \
+	MULXQ (48)(SI), AX, BX; ADCXQ CX, r6; ADOXQ AX, r6 \
+	MULXQ (56)(SI), AX, CX; ADCXQ BX, r7; ADOXQ AX, r7 \
+	MOVQ  $0, AX          ; ADCXQ CX, r8; ADOXQ AX, r8
+
+	MULS_MULX_512(0,  R8,  R9, R10, R11, R12, R13, R14, R15,  BP)
+	MULS_MULX_512(1,  R9, R10, R11, R12, R13, R14, R15,  BP,  R8)
+	MULS_MULX_512(2, R10, R11, R12, R13, R14, R15,  BP,  R8,  R9)
+	MULS_MULX_512(3, R11, R12, R13, R14, R15,  BP,  R8,  R9, R10)
+	MULS_MULX_512(4, R12, R13, R14, R15,  BP,  R8,  R9, R10, R11)
+	MULS_MULX_512(5, R13, R14, R15,  BP,  R8,  R9, R10, R11, R12)
+	MULS_MULX_512(6, R14, R15,  BP,  R8,  R9, R10, R11, R12, R13)
+	MULS_MULX_512(7, R15,  BP,  R8,  R9, R10, R11, R12, R13, R14)
+
+	MOVQ x+0(FP), DI
+	MOVQ  BP, ( 0)(DI)
+	MOVQ  R8, ( 8)(DI)
+	MOVQ  R9, (16)(DI)
+	MOVQ R10, (24)(DI)
+	MOVQ R11, (32)(DI)
+	MOVQ R12, (40)(DI)
+	MOVQ R13, (48)(DI)
+	MOVQ R14, (56)(DI)
+	MOVQ 24(SP), BP
+
+	// NOW DI needs to be reduced if > p
 	RET
