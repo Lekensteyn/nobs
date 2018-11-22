@@ -8,7 +8,7 @@ package csidh
 
 var (
 	pbits = 511
-	p     = u512{
+	p     = Fp{
 		0x1B81B90533C6C87B, 0xC2721BF457ACA835,
 		0x516730CC1F0B4F25, 0xA7AAC6C567F35507,
 		0x5AFBFCC69322C9CD, 0xB42D083AEDC88C42,
@@ -20,7 +20,7 @@ var (
 	fp_0 = []byte{}
 
 	/* Montgomery R = 2^512 mod p */
-	fp_1 = u512{
+	fp_1 = Fp{
 		0xC8FC8DF598726F0A, 0x7B1BC81750A6AF95,
 		0x5D319E67C1E961B4, 0xB0AA7275301955F1,
 		0x4A080672D9BA6C64, 0x97A5EF8A246EE77B,
@@ -28,7 +28,7 @@ var (
 	}
 
 	/* Montgomery R^2 mod p */
-	r_squared_mod_p = u512{
+	r_squared_mod_p = Fp{
 		0x36905B572FFC1724, 0x67086F4525F1F27D,
 		0x4FAF3FBFD22370CA, 0x192EA214BCC584B1,
 		0x5DAE03EE2F5DE3D0, 0x1E9248731776B371,
@@ -36,7 +36,7 @@ var (
 	}
 
 	// -p^-1 mod 2^64
-	pNegInv = u512{
+	pNegInv = Fp{
 		0x66c1301f632e294d,
 	}
 

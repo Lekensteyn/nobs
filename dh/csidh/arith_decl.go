@@ -3,25 +3,25 @@ package csidh
 // u512 specific functions
 
 // go:noescape
-func mul512(a, b *u512, c uint64)
+func mul512(a, b *Fp, c uint64)
 
 // go:noescape
-func add512(x, y, z *u512) uint64
+func add512(x, y, z *Fp) uint64
 
 // go:noescape
-func sub512(x, y, z *u512) uint64
+func sub512(x, y, z *Fp) uint64
 
 // go:noescape
-func cswap512(x, y *u512, choice uint8)
+func cswap512(x, y *Fp, choice uint8)
 
 // go:noescape
-func crdc512(x *u512)
+func crdc512(x *Fp)
 
 // go:noescape
-func csubrdc512(x *u512, choice uint64)
+func csubrdc512(x *Fp, choice uint64)
 
 // go:noescape
-func mul(res, x, y *u512)
+func mul(res, x, y *Fp)
 
 // go:noescape
 //func fp_set(x u512mont, y uint64)
