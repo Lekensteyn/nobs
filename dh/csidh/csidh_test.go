@@ -134,6 +134,7 @@ func TestXDbl(t *testing.T) {
 	}
 }
 
+// TODO: test C!=1
 func TestXDblAdd(t *testing.T) {
 	var P, Q, PdQ Point
 	var PaP, PaQ Point
@@ -171,6 +172,7 @@ func TestXDblAdd(t *testing.T) {
 	}
 }
 
+// TODO: test C!=1
 func TestXMul(t *testing.T) {
 	var kP, P Point
 	var co Coeff
