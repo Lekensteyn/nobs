@@ -5,6 +5,12 @@ type Fp [8]uint64
 
 // Represents projective point on elliptic curve E over Fp
 type Point struct {
-	X Fp
-	Z Fp
+	x Fp
+	z Fp
+}
+
+// Curve coefficients
+type Coeff struct {
+	a Fp
+	c Fp
 }

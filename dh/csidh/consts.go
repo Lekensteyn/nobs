@@ -15,10 +15,6 @@ var (
 		0xFC8AB0D15E3E4C4A, 0x65B48E8F740F89BF,
 	}
 
-	// OZAPTF: this is useless
-	// Zero
-	fp_0 = []byte{}
-
 	/* Montgomery R = 2^512 mod p */
 	fp_1 = Fp{
 		0xC8FC8DF598726F0A, 0x7B1BC81750A6AF95,
@@ -50,7 +46,10 @@ var (
 		317, 331, 337, 347, 349, 353, 359, 367, 373, 587,
 	}
 
-//	base = []byte{
-//		0,
-//	}
+	four = Fp{
+		0xECEEC5CBFA3C2B32, 0x678AE87493416DEC,
+		0xD1F81806C98EE886, 0x73543C49F07EADB6,
+		0x7228203E40A41DF7, 0xF63DADB2B62A8568,
+		0x229517D251910514, 0x06F26E6577649E80,
+	}
 )

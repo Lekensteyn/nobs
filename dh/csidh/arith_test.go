@@ -93,7 +93,6 @@ func TestFp512Mul3_Nominal(t *testing.T) {
 }
 
 func TestFp512Add3_Nominal(t *testing.T) {
-	var ret Fp
 	var mod big.Int
 	// modulus: 2^512
 	mod.SetUint64(1).Lsh(&mod, 512)
@@ -104,8 +103,8 @@ func TestFp512Add3_Nominal(t *testing.T) {
 		b := randomFp()
 		bigB, _ := new(big.Int).SetString(fp2S(b), 16)
 
-		add512(&ret, &a, &b)
-		bigRet, _ := new(big.Int).SetString(fp2S(ret), 16)
+		add512(&a, &a, &b)
+		bigRet, _ := new(big.Int).SetString(fp2S(a), 16)
 		bigA.Add(bigA, bigB)
 		// Truncate to 512 bits
 		bigA.Mod(bigA, &mod)
