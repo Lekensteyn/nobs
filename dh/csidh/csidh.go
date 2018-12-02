@@ -43,6 +43,7 @@ func xDbl(Q, P, A *Point) {
 // Pap, PaQ
 func xDblAdd(PaP, PaQ, P, Q, PdQ *Point, A24 *Coeff) {
 	var t0, t1, t2 Fp
+
 	addRdc(&t0, &P.x, &P.z)
 	subRdc(&t1, &P.x, &P.z)
 	mulRdc(&PaP.x, &t0, &t0)
