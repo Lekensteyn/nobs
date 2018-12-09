@@ -2,18 +2,6 @@
 
 #include "textflag.h"
 
-/*
-TEXT ·fp512Set(SB), NOSPLIT, $0-8
-	CLD
-	MOVQ	SI, AX
-	STOSQ
-	XORQ	AX, AX
-	MOVQ	$7, CX
-	REP	STOSQ
-
-	RET
-*/
-
 // Multipies 512-bit value by 64-bit value. Uses MULX instruction
 // x = y * z
 //

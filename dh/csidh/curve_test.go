@@ -194,40 +194,41 @@ func TestXMul(t *testing.T) {
 	}
 }
 
-func TestMapPoint(t *testing.T) {
-	var P, kern Point
-	var expPhiP big.Int
-	var co Coeff
-	var k = uint64(2)
-
-	/*
-		k=2
-		poly=E.torsion_polynomial(k).monic()
-		ker_roots = poly.roots( ring=GF(p), multiplicities=False )
-		assert(len(ker_roots) > 1)
-		points = [ E.lift_x(a) for a in ker_roots ]
-		phi = EllipticCurveIsogeny(E, points[1])
-		# Kernel (K)
-		print("kernel: %X"%points[1][0])
-		print("P: %X"%P[0])
-		print("phiP: %X"%phi(P)[0])
-		co = phi.codomain(); # Convert to montgomery and print A
-	*/
-
-	expPhiP.SetString("0x5FEBD68F795F9AEB732ECF0D1507904922F2B0736704E0751EF242B4E191E6F630D83778B5E5681161FD071CDEF7DF4C3A41D0ECEB30E90B119C5BF86C5AB51A", 0)
-	P.x = toFp("0x5FD8D226C228FD6AA3CCDCAB931C5D3AA000A46B47041F59D9724E517594F696D38F2CB45C987ACF68BB1057D8D518F926D8F55171F337D05354E0022BC66B23")
-	P.z = toFp("1")
-	co.a = toFp("0x9E8DBC4914E3C4F080592642DD0B08B9564AB3ADF75EE9B58A685443BA6E39A1ACD1201B7F034077AF344123880AF9D8C77575E6E782E00186881ECE8B87CA3")
-	co.c = toFp("1")
-	kern.x = toFp("0x594F77A49EABBF2A12025BC00E1DBC119CDA674B9FE8A00791724B42FEB7D225C4C9940B01B09B8F00B30B0E961212FB63E42614814E38EC9E5E5B0FEBF98C58")
-	kern.z = toFp("1")
-
-	MapPoint(&P, &co, &kern, k)
-	retPhiP := toNormX(&P)
-	if expPhiP.Cmp(&retPhiP) != 0 {
-		t.Errorf("\nExp: %s\nGot: %s", expPhiP.Text(16), retPhiP.Text(16))
-	}
-}
+//
+// func TestMapPoint(t *testing.T) {
+// 	var P, kern Point
+// 	var expPhiP big.Int
+// 	var co Coeff
+// 	var k = uint64(2)
+//
+// 	/*
+// 		k=2
+// 		poly=E.torsion_polynomial(k).monic()
+// 		ker_roots = poly.roots( ring=GF(p), multiplicities=False )
+// 		assert(len(ker_roots) > 1)
+// 		points = [ E.lift_x(a) for a in ker_roots ]
+// 		phi = EllipticCurveIsogeny(E, points[1])
+// 		# Kernel (K)
+// 		print("kernel: %X"%points[1][0])
+// 		print("P: %X"%P[0])
+// 		print("phiP: %X"%phi(P)[0])
+// 		co = phi.codomain(); # Convert to montgomery and print A
+// 	*/
+//
+// 	expPhiP.SetString("0x5FEBD68F795F9AEB732ECF0D1507904922F2B0736704E0751EF242B4E191E6F630D83778B5E5681161FD071CDEF7DF4C3A41D0ECEB30E90B119C5BF86C5AB51A", 0)
+// 	P.x = toFp("0x5FD8D226C228FD6AA3CCDCAB931C5D3AA000A46B47041F59D9724E517594F696D38F2CB45C987ACF68BB1057D8D518F926D8F55171F337D05354E0022BC66B23")
+// 	P.z = toFp("1")
+// 	co.a = toFp("0x9E8DBC4914E3C4F080592642DD0B08B9564AB3ADF75EE9B58A685443BA6E39A1ACD1201B7F034077AF344123880AF9D8C77575E6E782E00186881ECE8B87CA3")
+// 	co.c = toFp("1")
+// 	kern.x = toFp("0x594F77A49EABBF2A12025BC00E1DBC119CDA674B9FE8A00791724B42FEB7D225C4C9940B01B09B8F00B30B0E961212FB63E42614814E38EC9E5E5B0FEBF98C58")
+// 	kern.z = toFp("1")
+//
+// 	MapPoint(&P, &co, &kern, k)
+// 	retPhiP := toNormX(&P)
+// 	if expPhiP.Cmp(&retPhiP) != 0 {
+// 		t.Errorf("\nExp: %s\nGot: %s", expPhiP.Text(16), retPhiP.Text(16))
+// 	}
+// }
 
 func BenchmarkXMul(b *testing.B) {
 	var kP, P Point
@@ -278,7 +279,6 @@ func BenchmarkXDbl(b *testing.B) {
 	}
 }
 
-/*
 func BenchmarkMapPoint(b *testing.B) {
 	var P, kern Point
 	var expPhiP big.Int
@@ -293,8 +293,7 @@ func BenchmarkMapPoint(b *testing.B) {
 	kern.x = toFp("0x594F77A49EABBF2A12025BC00E1DBC119CDA674B9FE8A00791724B42FEB7D225C4C9940B01B09B8F00B30B0E961212FB63E42614814E38EC9E5E5B0FEBF98C58")
 	kern.z = toFp("1")
 
-	for n:=0; n<b.N; n++ {
+	for n := 0; n < b.N; n++ {
 		MapPoint(&P, &co, &kern, k)
 	}
 }
-*/

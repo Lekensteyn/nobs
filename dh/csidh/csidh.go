@@ -1,94 +1,150 @@
 package csidh
 
-// Implements differential arithmetic in P^1
-// for montgomery curves.
+import "io"
 
-// Implements a mapping: x(P),x(Q),x(P-Q) -> x(P+Q)
-// In: P,Q,PdQ
-// Out: PaQ
-func xAdd(PaQ, P, Q, PdQ *Point) {
-	var t0, t1, t2, t3 Fp
-	addRdc(&t0, &P.x, &P.z)
-	subRdc(&t1, &P.x, &P.z)
-	addRdc(&t2, &Q.x, &Q.z)
-	subRdc(&t3, &Q.x, &Q.z)
-	mulRdc(&t0, &t0, &t3)
-	mulRdc(&t1, &t1, &t2)
-	addRdc(&t2, &t0, &t1)
-	subRdc(&t3, &t0, &t1)
-	sqrRdc(&t2, &t2)
-	sqrRdc(&t3, &t3)
-	mulRdc(&PaQ.x, &PdQ.z, &t2)
-	mulRdc(&PaQ.z, &PdQ.x, &t3)
+func (c *PrivateKey) Generate(rand io.Reader) error {
+	for i, _ := range c.e {
+		c.e[i] = 0
+	}
+
+	for i := 0; i < len(primes); {
+		var buf [64]byte
+		_, err := io.ReadFull(rand, buf[:])
+		if err != nil {
+			return err
+		}
+
+		for j, _ := range buf {
+			if int8(buf[j]) <= expMax && int8(buf[j]) >= -expMax {
+				c.e[i>>1] |= int8((buf[j] & 0xf) << uint(i%2*4))
+				i = i + 1
+				if i == len(primes) {
+					break
+				}
+			}
+		}
+	}
+	return nil
 }
 
-func xDbl(Q, P, A *Point) {
-	var t0, t1, t2 Fp
-	addRdc(&t0, &P.x, &P.z)
-	sqrRdc(&t0, &t0)
-	subRdc(&t1, &P.x, &P.z)
-	sqrRdc(&t1, &t1)
-	subRdc(&t2, &t0, &t1)
-	mulRdc(&t1, &four, &t1)
-	mulRdc(&t1, &t1, &A.z)
-	mulRdc(&Q.x, &t0, &t1)
-	addRdc(&t0, &A.z, &A.z)
-	addRdc(&t0, &t0, &A.x)
-	mulRdc(&t0, &t0, &t2)
-	addRdc(&t0, &t0, &t1)
-	mulRdc(&Q.z, &t0, &t2)
+// Assumes lower<upper
+// TODO: non constant time
+// TODO: this needs to be rewritten - function called recursivelly
+/* compute [(p+1)/l] P for all l in our list of primes. */
+/* divide and conquer is much faster than doing it naively,
+ * but uses more memory. */
+func cofactorMultiples(P []Point, A *Coeff, lower, upper uint64) {
+	// OZAPTF: Needed?
+	if upper-lower == 1 {
+		return
+	}
+
+	// TODO: double check
+	var mid = lower + ((upper - lower + 1) >> 1)
+	var cl = Fp{1}
+	var cu = Fp{1}
+
+	// TODO: one loop would be OK
+	for i := lower; i < mid; i++ {
+		mul512(&cu, &cu, primes[i])
+	}
+	for i := mid; i < upper; i++ {
+		mul512(&cl, &cl, primes[i])
+	}
+
+	xMul512(&P[mid], &P[lower], A, &cu)
+	xMul512(&P[lower], &P[lower], A, &cl)
+
+	cofactorMultiples(P, A, lower, mid)
+	cofactorMultiples(P, A, mid, upper)
 }
 
-// TODO: This can be improved I think (as for SIDH)
-// Pap, PaQ
-func xDblAdd(PaP, PaQ, P, Q, PdQ *Point, A24 *Coeff) {
-	var t0, t1, t2 Fp
+// evaluates x^3 + Ax^2 + x
+func montEval(res, A, x *Fp) {
+	var t Fp
 
-	addRdc(&t0, &P.x, &P.z)
-	subRdc(&t1, &P.x, &P.z)
-	mulRdc(&PaP.x, &t0, &t0)
-	subRdc(&t2, &Q.x, &Q.z)
-	addRdc(&PaQ.x, &Q.x, &Q.z)
-	mulRdc(&t0, &t0, &t2)
-	mulRdc(&PaP.z, &t1, &t1)
-	mulRdc(&t1, &t1, &PaQ.x)
-	subRdc(&t2, &PaP.x, &PaP.z)
-	mulRdc(&PaP.z, &PaP.z, &A24.c)
-	mulRdc(&PaP.x, &PaP.x, &PaP.z)
-	mulRdc(&PaQ.x, &A24.a, &t2)
-	subRdc(&PaQ.z, &t0, &t1)
-	addRdc(&PaP.z, &PaP.z, &PaQ.x)
-	addRdc(&PaQ.x, &t0, &t1)
-	mulRdc(&PaP.z, &PaP.z, &t2)
-	mulRdc(&PaQ.z, &PaQ.z, &PaQ.z)
-	mulRdc(&PaQ.x, &PaQ.x, &PaQ.x)
-	mulRdc(&PaQ.z, &PaQ.z, &PdQ.x)
-	mulRdc(&PaQ.x, &PaQ.x, &PdQ.z)
+	*res = *x
+	mulRdc(res, res, res)
+	mulRdc(&t, A, x)
+	addRdc(res, res, &t)
+	addRdc(res, res, &fp_1)
+	mulRdc(res, res, x)
 }
 
-func cswapPoint(P1, P2 *Point, choice uint8) {
-	cswap512(&P1.x, &P2.x, choice)
-	cswap512(&P1.z, &P2.z, choice)
+// assumes len(x) == len(y)
+// return 1 if equal 0 if not
+// OZAPTF: I actually need to know if x is zero
+func ctEq64(x, y []uint64) uint {
+	var t uint64
+	var h, l uint64
+	for i := 0; i < len(x); i++ {
+		t |= x[i] ^ y[i]
+	}
+
+	h = ((t >> 32) - 1) >> 63
+	l = ((t & 0xFFFFFFFF) - 1) >> 63
+	return uint(h & l & 1)
 }
 
-// kP = [k]P
-// TODO: Only one swap should be enough
-func xMul512(kP, P *Point, co *Coeff, k *Fp) {
-	var A24 Coeff
-	kP.x = fp_1
-	R := *P
-	PdQ := *P
+// Key validation
+func (c *PublicKey) Validate() bool {
+	var A = Coeff{a: c.A, c: fp_1}
+	var zero [8]uint64
 
-	// Precompyte A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
-	addRdc(&A24.a, &co.c, &co.c)
-	addRdc(&A24.a, &A24.a, &co.a)
-	mulRdc(&A24.c, &co.c, &four)
+	// TODO: how long it will loop?
+	for {
+		// OZAPTF: heap?
+		var P [kPrimeCount]Point
+		/* TODO: fp_random(P.x) to port */
+		P[0].z = fp_1
 
-	for i := uint(512); i > 0; {
-		i--
-		bit := uint8(k[i>>6] >> (i & 63) & 1)
-		cswapPoint(kP, &R, bit)
-		xDblAdd(kP, &R, kP, &R, &PdQ, &A24)
-		cswapPoint(kP, &R, bit)
+		/* maximal 2-power in p+1 */
+		// OZAPTF
+		var t = Point{x: A.a, z: A.c}
+		xDbl(&P[0], &P[0], &t)
+		xDbl(&P[0], &P[0], &t)
+		A.a = t.x
+		A.c = t.z
+
+		cofactorMultiples(P[:], &A, 0, kPrimeCount)
+		var order = Fp{1}
+
+		for i := kPrimeCount - 1; i >= 0; i-- {
+			if ctEq64(P[i].z[:], zero[:]) == 1 {
+				var t Fp
+				t[0] = primes[i]
+				xMul512(&P[i], &P[i], &A, &t)
+				if ctEq64(P[i].z[:], zero[:]) != 1 {
+					return false
+				}
+				mul512(&order, &order, primes[i])
+
+				if sub512(&t, &fourSqrtP, &order) != 0 {
+					return true
+				}
+			}
+		}
+	}
+}
+
+/*
+func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
+
+}
+
+// todo: probably should be similar to some other interface
+func (c *PublicKey) csidh(pub *PublicKey, prv *PrivateKey) bool {
+	if !c.Validate() {
+		// TODO: randomize out->A
+		return false
+	}
+	c.Action(pub, prv)
+	return true
+}
+*/
+
+func init() {
+	if len(primes) != kPrimeCount {
+		panic("Wrong number of primes")
 	}
 }
