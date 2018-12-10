@@ -115,13 +115,18 @@ func square_multiply(x, y *Fp, exp uint64) {
 func MapPoint(img *Point, co *Coeff, kern *Point, order uint64) {
 	var t0, t1, t2, S, D Fp
 	var Q, prod Point
-	var Aed Coeff
+	var Aed Coeff // OZAPTF: call it coEd
 
 	// Compute twisted Edwards coefficients
+	// Aed.a = co.a + 2*co.c
+	// Aed.c = co.a - 2*co.c
+	// Aed.a*X^2 + Y^2 = 1 + Aed.c*X^2*Y^2
 	addRdc(&Aed.c, &co.c, &co.c)
 	addRdc(&Aed.a, &co.a, &co.c)
 	subRdc(&Aed.c, &co.a, &Aed.c)
 
+	// Transfer point to twisted Edwards YZ-coordinates
+	// (X:Z)->(Y:Z) = (X-Z : X+Z)
 	addRdc(&S, &img.x, &img.z)
 	subRdc(&D, &img.x, &img.z)
 
@@ -171,11 +176,11 @@ func MapPoint(img *Point, co *Coeff, kern *Point, order uint64) {
 	mulRdc(&prod.z, &prod.z, &prod.z)
 	mulRdc(&prod.z, &prod.z, &prod.z)
 
-	// compute image curve params
+	// Compute image curve params
 	mulRdc(&Aed.c, &Aed.c, &prod.x)
 	mulRdc(&Aed.a, &Aed.a, &prod.z)
 
-	// convert back to Montgomery
+	// Convert curve coefficients back to Montgomery
 	addRdc(&co.a, &Aed.a, &Aed.c)
 	subRdc(&co.c, &Aed.a, &Aed.c)
 	addRdc(&co.a, &co.a, &co.a)
