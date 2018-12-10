@@ -129,7 +129,7 @@ func (c *PublicKey) Validate() bool {
 
 func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
 	var k [2]Fp
-	var e[2][kPrimeCount] uint8
+	var e [2][kPrimeCount]uint8
 	var done = [2]bool{false, false}
 	var A = Coeff{a: pub.A, c: fp_1}
 	var zero [8]uint64
@@ -137,13 +137,13 @@ func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
 	k[0][0] = 4
 	k[1][0] = 4
 
-	for i,v:=range(primes) {
-		t := int8((prv.e[uint(i)>>1] << (uint(i)%2)*4)>>4)
-		if t>0 {
+	for i, v := range primes {
+		t := int8((prv.e[uint(i)>>1] << (uint(i) % 2) * 4) >> 4)
+		if t > 0 {
 			e[0][i] = uint8(t)
 			e[1][i] = 0
 			mul512(&k[1], &k[1], v)
-		} else if t<0 {
+		} else if t < 0 {
 			e[1][i] = uint8(-t) // OZAPTF: OK?
 			e[0][i] = 0
 			mul512(&k[0], &k[0], v)
@@ -163,19 +163,19 @@ func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
 		montEval(&rhs, &A.a, &P.x)
 		var sign = isNotSqr(&rhs)
 
-		if(done[sign]) {
+		if done[sign] {
 			continue
 		}
 
 		xMul512(&P, &P, &A, &k[sign])
 		done[sign] = true
 
-		for i,v:=range(primes) {
+		for i, v := range primes {
 			if e[sign][i] != 0 {
 				var cof = Fp{1}
 				var K Point
 
-				for j:=i+1; j<len(primes); j++ {
+				for j := i + 1; j < len(primes); j++ {
 					if e[sign][j] != 0 {
 						mul512(&cof, &cof, primes[j])
 					}
