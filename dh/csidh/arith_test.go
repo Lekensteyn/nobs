@@ -319,7 +319,6 @@ func TestModExp(t *testing.T) {
 		exp.SetString(fp2S(randomFp()), 16)
 		resExp.Exp(&base, &exp, kModulus)
 		toMont(&base, true)
-		//toMont(&exp, true)
 		toMont(&resExp, true)
 
 		// Convert to Fp
