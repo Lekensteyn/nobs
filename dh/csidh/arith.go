@@ -23,17 +23,17 @@ func sqrRdc(z, x *Fp) {
 	crdc512(z)
 }
 
-// 4 bit fixed-window exponentiation
-// TODO: currently mul is interleaved with reduction step. It would be better to
-// do reduction only once at the end (like in Barrett's mul)
-func modExp(res, base, exp *Fp) {
+// Fixed-window mod exp for 512 bit value with 4 bit window.
+// res = base ^ exp (mod p)
+// Constant time.
+func modExpRdc(res, base, exp *Fp) {
 	var precomp [16]Fp
 
 	// Precompute step, computes an array of small powers of 'base'. As this
 	// algorithm implements 4-bit window, we need 2^4=16 of such values.
 	// base^0 = 1, which is equal to R from REDC.
-	precomp[0] = fp_1
-	precomp[1] = *base
+	precomp[0] = fp_1  // base ^ 0
+	precomp[1] = *base // base ^ 1
 	for i := 2; i < 16; i = i + 2 {
 		// Interleave fast squaring with multiplication. It's currently not a case
 		// but squaring can be implemented faster than multiplication.
@@ -46,7 +46,7 @@ func modExp(res, base, exp *Fp) {
 		for j := 0; j < 4; j++ {
 			mulRdc(res, res, res)
 		}
-		// TODO: not constant time
+		// TODO: non resistant to cache SCA
 		idx := (exp[i/16] >> uint((i%16)*4)) & 15
 		mulRdc(res, res, &precomp[idx])
 	}
