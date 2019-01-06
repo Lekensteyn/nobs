@@ -1,69 +1,11 @@
 package csidh
 
 import (
-	"fmt"
 	"math/big"
+	//	crand "crypto/rand"
 	mrand "math/rand"
 	"testing"
 )
-
-// Commonly used variables
-var (
-	// Number of interations
-	kNumIter = 10000
-	// Modulus
-	kModulus, _ = new(big.Int).SetString(fp2S(p), 16)
-	// Zero in Fp512
-	ZeroFp512 = Fp{}
-	// One in Fp512
-	OneFp512 = Fp{1, 0, 0, 0, 0, 0, 0, 0}
-)
-
-func fp2S(v Fp) string {
-	var str string
-	for i := 0; i < 8; i++ {
-		str = fmt.Sprintf("%016x", v[i]) + str
-	}
-	return str
-}
-
-// zeroize Fp
-func zero(v *Fp) {
-	for i, _ := range *v {
-		v[i] = 0
-	}
-}
-
-// returns random value in a range (0,p)
-func randomFp() Fp {
-	var u Fp
-	for i := 0; i < 8; i++ {
-		u[i] = mrand.Uint64()
-	}
-	return u
-}
-
-// x<y: <0
-// x>y: >0
-// x==y: 0
-func cmp512(x, y *Fp) int {
-	if len(*x) == len(*y) {
-		for i := len(*x) - 1; i >= 0; i-- {
-			if x[i] < y[i] {
-				return -1
-			} else if x[i] > y[i] {
-				return 1
-			}
-		}
-		return 0
-	}
-	return len(*x) - len(*y)
-}
-
-// return x==y
-func ceq512(x, y *Fp) bool {
-	return cmp512(x, y) == 0
-}
 
 // Check if mul512 produces result
 // z = x*y mod 2^512
@@ -350,6 +292,47 @@ func TestMulRdc(t *testing.T) {
 	mulRdc(&res, &m1, &m1)
 	if !ceq512(&res, &m1m1) {
 		t.Errorf("Wrong value\n%X", res)
+	}
+}
+
+/*
+func TestInvRdc(t *testing.T) {
+	// var res Fp
+	// a^(p-2) == a^(-1)
+	var res, two, rnd big.Int
+
+	rnd.Rand(crand.Reader, kModulus)
+	res.Sub(kModulus, big.NewInt(2))
+	res.Exp(&rnd, &res, kModulus)
+	// OZAPTF: todo
+}
+*/
+
+func TestModExp(t *testing.T) {
+	var resExp, base, exp big.Int
+	var baseFp, expFp, resFp, resFpExp Fp
+
+	for i := 0; i < kNumIter; i++ {
+		// Perform modexp with reference implementation
+		// in Montgomery domain
+		base.SetString(fp2S(randomFp()), 16)
+		exp.SetString(fp2S(randomFp()), 16)
+		resExp.Exp(&base, &exp, kModulus)
+		toMont(&base, true)
+		//toMont(&exp, true)
+		toMont(&resExp, true)
+
+		// Convert to Fp
+		copy(baseFp[:], intGetU64(&base))
+		copy(expFp[:], intGetU64(&exp))
+		copy(resFpExp[:], intGetU64(&resExp))
+
+		// Perform modexp with our implementation
+		modExp(&resFp, &baseFp, &expFp)
+
+		if !ceq512(&resFp, &resFpExp) {
+			t.Errorf("Wrong value\n%X!=%X", resFp, intGetU64(&resExp))
+		}
 	}
 }
 

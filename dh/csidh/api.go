@@ -17,7 +17,6 @@ func NewPrivateKey() PrivateKey {
 }
 
 func (c PrivateKey) Import(key []byte) {
-
 }
 
 func (c PrivateKey) Export() []byte {

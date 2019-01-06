@@ -193,8 +193,7 @@ func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
 			done[sign] = done[sign] && (e[sign][i] == 0)
 		}
 
-		// TODO: Modular exponentation a^(p-2)
-		// 		 inv(A.z) => pow(A.z, p - 2)
+		modExp(&A.c, &A.c, &pMin2)
 		mulRdc(&A.a, &A.a, &A.c)
 		A.c = fp_1
 		if done[0] && done[1] {

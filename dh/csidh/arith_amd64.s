@@ -248,3 +248,8 @@ TEXT ·mul(SB),NOSPLIT,$32-24
 
 	// NOW DI needs to be reduced if > p
 	RET
+
+// This should use Fermats little theorem. a^((p-1)/2) will result
+// in 1 only if a = x^2
+TEXT ·isNotSqr(SB),NOSPLIT,$32-24
+	RET //OZAPTF: TODO
