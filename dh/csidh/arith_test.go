@@ -295,19 +295,6 @@ func TestMulRdc(t *testing.T) {
 	}
 }
 
-/*
-func TestInvRdc(t *testing.T) {
-	// var res Fp
-	// a^(p-2) == a^(-1)
-	var res, two, rnd big.Int
-
-	rnd.Rand(crand.Reader, kModulus)
-	res.Sub(kModulus, big.NewInt(2))
-	res.Exp(&rnd, &res, kModulus)
-	// OZAPTF: todo
-}
-*/
-
 func TestModExp(t *testing.T) {
 	var resExp, base, exp big.Int
 	var baseFp, expFp, resFp, resFpExp Fp
@@ -327,10 +314,38 @@ func TestModExp(t *testing.T) {
 		copy(resFpExp[:], intGetU64(&resExp))
 
 		// Perform modexp with our implementation
-		modExp(&resFp, &baseFp, &expFp)
+		modExpRdc(&resFp, &baseFp, &expFp)
 
 		if !ceq512(&resFp, &resFpExp) {
 			t.Errorf("Wrong value\n%X!=%X", resFp, intGetU64(&resExp))
+		}
+	}
+}
+
+func TestIsSqr(t *testing.T) {
+	var n, nMont big.Int
+	var pm1o2, rawP big.Int
+	var nMontFp Fp
+
+	// (p-1)/2
+	pm1o2.SetString("0x32da4747ba07c4dffe455868af1f26255a16841d76e446212d7dfe63499164e6d3d56362b3f9aa83a8b398660f85a792e1390dfa2bd6541a8dc0dc8299e3643d", 0)
+	// modulus value (not in montgomery)
+	rawP.SetString("0x65b48e8f740f89bffc8ab0d15e3e4c4ab42d083aedc88c425afbfcc69322c9cda7aac6c567f35507516730cc1f0b4f25c2721bf457aca8351b81b90533c6c87b", 0)
+
+	// There is 641 quadratic residues in this range
+	for i:=uint64(1); i<1000; i++ {
+		n.SetUint64(i)
+		n.Exp(&n, &pm1o2, &rawP)
+		exp := n.Cmp(big.NewInt(1)) == 0
+
+		nMont.SetUint64(i)
+		toMont(&nMont, true)
+		copy(nMontFp[:], intGetU64(&nMont))
+		ret := isSqr(&nMontFp)
+
+		if ret != exp {
+			toMont(&nMont, false)
+			t.Errorf("%s != %s", nMont.Text(10), n.Text(10))
 		}
 	}
 }
@@ -384,5 +399,14 @@ func BenchmarkSubRdc(b *testing.B) {
 	var res Fp
 	for n := 0; n < b.N; n++ {
 		subRdc(&res, &arg1, &arg2)
+	}
+}
+
+func BenchmarkModExpRdc(b *testing.B) {
+	arg1 := randomFp()
+	arg2 := randomFp()
+	var res Fp
+	for n := 0; n < b.N; n++ {
+		modExpRdc(&res, &arg1, &arg2)
 	}
 }

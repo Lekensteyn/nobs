@@ -23,22 +23,23 @@ func sqrRdc(z, x *Fp) {
 	crdc512(z)
 }
 
-// Fixed-window mod exp for 512 bit value with 4 bit window.
-// res = base ^ exp (mod p)
+// Fixed-window mod exp for 512 bit value with 4 bit window. Returned
+// result is a number in montgomery domain.
+// res = b ^ e (mod p).
 // Constant time.
-func modExpRdc(res, base, exp *Fp) {
+func modExpRdc(res, b, e *Fp) {
 	var precomp [16]Fp
 
-	// Precompute step, computes an array of small powers of 'base'. As this
+	// Precompute step, computes an array of small powers of 'b'. As this
 	// algorithm implements 4-bit window, we need 2^4=16 of such values.
-	// base^0 = 1, which is equal to R from REDC.
-	precomp[0] = fp_1  // base ^ 0
-	precomp[1] = *base // base ^ 1
+	// b^0 = 1, which is equal to R from REDC.
+	precomp[0] = fp_1  // b ^ 0
+	precomp[1] = *b // b ^ 1
 	for i := 2; i < 16; i = i + 2 {
 		// Interleave fast squaring with multiplication. It's currently not a case
 		// but squaring can be implemented faster than multiplication.
 		sqrRdc(&precomp[i], &precomp[i/2])
-		mulRdc(&precomp[i+1], &precomp[i], base)
+		mulRdc(&precomp[i+1], &precomp[i], b)
 	}
 
 	*res = fp_1
@@ -47,8 +48,30 @@ func modExpRdc(res, base, exp *Fp) {
 			mulRdc(res, res, res)
 		}
 		// TODO: non resistant to cache SCA
-		idx := (exp[i/16] >> uint((i%16)*4)) & 15
+		idx := (e[i/16] >> uint((i%16)*4)) & 15
 		mulRdc(res, res, &precomp[idx])
 	}
+    // Reduction step
 	crdc512(res)
+}
+
+// Checks whether value v is quadratic residue. Implementation uses
+// Fermat's little theorem (or Euler's criterion)
+//      a^(p-1) == 1, hence
+//      (a^2) ((p-1)/2) == 1
+// So in case v^((p-1)/2) == 1, then it means v is a quadratic residue,
+// otherwise is a quadratic non residue.
+// Value v is in montgomery domain. Returns true in case it is square,
+// otherwise false
+func isSqr(v *Fp) bool {
+    var res Fp
+    var b uint64
+
+    modExpRdc(&res, v, &pMin1By2)
+    for i,_:=range(res) {
+        // TODO: that's not constant time
+        b |= res[i]^fp_1[i]
+    }
+
+    return b==0
 }
