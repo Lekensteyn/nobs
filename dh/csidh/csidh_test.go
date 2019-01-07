@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-func TestXXX(t *testing.T) {
-	print(len(primes))
-}
-
 func eq64(x, y []uint64) uint {
 	for i, _ := range x {
 		if x[i] != y[i] {

@@ -63,7 +63,7 @@ func modExpRdc(res, b, e *Fp) {
 // otherwise is a quadratic non residue.
 // Value v is in montgomery domain. Returns true in case it is square,
 // otherwise false
-func isSqr(v *Fp) bool {
+func isNonQuadRes(v *Fp) bool {
 	var res Fp
 	var b uint64
 
@@ -73,5 +73,5 @@ func isSqr(v *Fp) bool {
 		b |= res[i] ^ fp_1[i]
 	}
 
-	return b == 0
+	return b != 0
 }

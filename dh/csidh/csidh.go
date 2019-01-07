@@ -161,7 +161,12 @@ func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
 		// Randomize P.x
 		P.z = fp_1
 		montEval(&rhs, &A.a, &P.x)
-		var sign = isNotSqr(&rhs)
+		//		var sign = isNotSqr(&rhs)
+		var sign int
+		if isNonQuadRes(&rhs) {
+			// TODO: this function should return 1 or 0
+			sign = 1
+		}
 
 		if done[sign] {
 			continue

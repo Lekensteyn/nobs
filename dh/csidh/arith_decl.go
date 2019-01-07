@@ -22,7 +22,3 @@ func csubrdc512(x *Fp, choice uint64)
 
 //go:noescape
 func mul(res, x, y *Fp)
-
-// 1 if it is square 0 if it isn't
-//go:noescape
-func isNotSqr(res *Fp) int
