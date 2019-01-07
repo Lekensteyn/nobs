@@ -33,8 +33,8 @@ func modExpRdc(res, b, e *Fp) {
 	// Precompute step, computes an array of small powers of 'b'. As this
 	// algorithm implements 4-bit window, we need 2^4=16 of such values.
 	// b^0 = 1, which is equal to R from REDC.
-	precomp[0] = fp_1  // b ^ 0
-	precomp[1] = *b // b ^ 1
+	precomp[0] = fp_1 // b ^ 0
+	precomp[1] = *b   // b ^ 1
 	for i := 2; i < 16; i = i + 2 {
 		// Interleave fast squaring with multiplication. It's currently not a case
 		// but squaring can be implemented faster than multiplication.
@@ -51,7 +51,7 @@ func modExpRdc(res, b, e *Fp) {
 		idx := (e[i/16] >> uint((i%16)*4)) & 15
 		mulRdc(res, res, &precomp[idx])
 	}
-    // Reduction step
+	// Reduction step
 	crdc512(res)
 }
 
@@ -64,14 +64,14 @@ func modExpRdc(res, b, e *Fp) {
 // Value v is in montgomery domain. Returns true in case it is square,
 // otherwise false
 func isSqr(v *Fp) bool {
-    var res Fp
-    var b uint64
+	var res Fp
+	var b uint64
 
-    modExpRdc(&res, v, &pMin1By2)
-    for i,_:=range(res) {
-        // TODO: that's not constant time
-        b |= res[i]^fp_1[i]
-    }
+	modExpRdc(&res, v, &pMin1By2)
+	for i, _ := range res {
+		// TODO: that's not constant time
+		b |= res[i] ^ fp_1[i]
+	}
 
-    return b==0
+	return b == 0
 }
