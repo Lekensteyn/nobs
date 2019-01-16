@@ -17,23 +17,23 @@ func NewPrivateKey() PrivateKey {
 }
 
 func (c PrivateKey) Import(key []byte) bool {
-    if len(key) < len(c.e) {
-        return false
-    }
-    for i,v := range key {
-        c.e[i] = int8(v)
-    }
-    return true
+	if len(key) < len(c.e) {
+		return false
+	}
+	for i, v := range key {
+		c.e[i] = int8(v)
+	}
+	return true
 }
 
 func (c PrivateKey) Export(out []byte) bool {
-    if len(out) < len(c.e) {
-        return false
-    }
-    for i,v := range c.e {
-        out[i] = byte(v)
-    }
-    return true
+	if len(out) < len(c.e) {
+		return false
+	}
+	for i, v := range c.e {
+		out[i] = byte(v)
+	}
+	return true
 }
 
 // PublicKey
