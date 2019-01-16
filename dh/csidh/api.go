@@ -8,7 +8,7 @@ type PublicKey struct {
 
 // Defines operations on private key
 type PrivateKey struct {
-	e [38]int8
+	e [37]int8
 }
 
 // PrivateKey
@@ -16,11 +16,24 @@ func NewPrivateKey() PrivateKey {
 	return PrivateKey{}
 }
 
-func (c PrivateKey) Import(key []byte) {
+func (c PrivateKey) Import(key []byte) bool {
+    if len(key) < len(c.e) {
+        return false
+    }
+    for i,v := range key {
+        c.e[i] = int8(v)
+    }
+    return true
 }
 
-func (c PrivateKey) Export() []byte {
-	return nil
+func (c PrivateKey) Export(out []byte) bool {
+    if len(out) < len(c.e) {
+        return false
+    }
+    for i,v := range c.e {
+        out[i] = byte(v)
+    }
+    return true
 }
 
 // PublicKey
