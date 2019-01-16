@@ -127,7 +127,7 @@ func (c *PublicKey) Validate() bool {
 	}
 }
 
-func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
+func (c *PublicKey) groupAction(pub *PublicKey, prv *PrivateKey) {
 	var k [2]Fp
 	var e [2][kPrimeCount]uint8
 	var done = [2]bool{false, false}
@@ -161,12 +161,7 @@ func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
 		// Randomize P.x
 		P.z = fp_1
 		montEval(&rhs, &A.a, &P.x)
-		//		var sign = isNotSqr(&rhs)
-		var sign int
-		if isNonQuadRes(&rhs) {
-			// TODO: this function should return 1 or 0
-			sign = 1
-		}
+		sign := isNonQuadRes(&rhs)
 
 		if done[sign] {
 			continue
@@ -208,13 +203,18 @@ func (c *PublicKey) Action(pub *PublicKey, prv *PrivateKey) {
 	c.A = A.a
 }
 
+func (c *PublicKey) Generate(prv *PrivateKey) {
+	var emptyKey PublicKey
+	c.groupAction(&emptyKey, prv)
+}
+
 // todo: probably should be similar to some other interface
-func (c *PublicKey) csidh(pub *PublicKey, prv *PrivateKey) bool {
+func (c *PublicKey) DeriveSecret(pub *PublicKey, prv *PrivateKey) bool {
 	if !c.Validate() {
 		// TODO: randomize out->A
 		return false
 	}
-	c.Action(pub, prv)
+	c.groupAction(pub, prv)
 	return true
 }
 

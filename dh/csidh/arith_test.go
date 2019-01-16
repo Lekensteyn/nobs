@@ -337,14 +337,18 @@ func TestIsSqr(t *testing.T) {
 	for i := uint64(1); i < 1000; i++ {
 		n.SetUint64(i)
 		n.Exp(&n, &pm1o2, &rawP)
-		exp := n.Cmp(big.NewInt(1)) != 0
+		// exp == 1 iff n is quadratic non-residue
+		exp := n.Cmp(big.NewInt(1))
+		if exp < 0 {
+			panic("Should never happen")
+		}
 
 		nMont.SetUint64(i)
 		toMont(&nMont, true)
 		copy(nMontFp[:], intGetU64(&nMont))
 		ret := isNonQuadRes(&nMontFp)
 
-		if ret != exp {
+		if ret == exp {
 			toMont(&nMont, false)
 			t.Errorf("Test failed for value %s", nMont.Text(10))
 		}

@@ -59,19 +59,20 @@ func modExpRdc(res, b, e *Fp) {
 // Fermat's little theorem (or Euler's criterion)
 //      a^(p-1) == 1, hence
 //      (a^2) ((p-1)/2) == 1
-// So in case v^((p-1)/2) == 1, then it means v is a quadratic residue,
-// otherwise is a quadratic non residue.
-// Value v is in montgomery domain. Returns true in case it is square,
-// otherwise false
-func isNonQuadRes(v *Fp) bool {
+// Which means v is a quadratic residue iff v^((p-1)/2) == 1.
+// Caller provided v must be in montgomery domain.
+// Function returns 1 in case v is quadratic non-residue,
+// otherwise 0.
+func isNonQuadRes(v *Fp) int {
 	var res Fp
 	var b uint64
 
 	modExpRdc(&res, v, &pMin1By2)
 	for i, _ := range res {
-		// TODO: that's not constant time
 		b |= res[i] ^ fp_1[i]
 	}
 
-	return b != 0
+	// In case b==0 then b-1 will set MSB. Only in such case
+	// ~(b OR ~(b-1)) will result in MSB set to 1 (logical implication)
+	return int((^(b | (^(b - 1))) >> 63))
 }
