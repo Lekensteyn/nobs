@@ -61,8 +61,8 @@ func modExpRdc(res, b, e *Fp) {
 //      (a^2) ((p-1)/2) == 1
 // Which means v is a quadratic residue iff v^((p-1)/2) == 1.
 // Caller provided v must be in montgomery domain.
-// Function returns 1 in case v is quadratic non-residue,
-// otherwise 0.
+// Function returns 0 in case v is quadratic residue and 1 in case
+// v is quadratic non-residue.
 func isNonQuadRes(v *Fp) int {
 	var res Fp
 	var b uint64
@@ -72,7 +72,8 @@ func isNonQuadRes(v *Fp) int {
 		b |= res[i] ^ fp_1[i]
 	}
 
-	// In case b==0 then b-1 will set MSB. Only in such case
-	// ~(b OR ~(b-1)) will result in MSB set to 1 (logical implication)
-	return int((^(b | (^(b - 1))) >> 63))
+	// In case b==0 then b-1 will set MSB. Only in such case (b OR ~(b-1))
+	// will result in MSB being not set (logical implication: (b-1)=>b is
+	// false iff (b-1)==0 and b==non-zero, otherwise true).
+	return int(((b | (^(b - 1))) >> 63))
 }
