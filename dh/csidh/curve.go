@@ -75,9 +75,9 @@ func cswapPoint(P1, P2 *Point, choice uint8) {
 // TODO: Only one swap should be enough
 func xMul512(kP, P *Point, co *Coeff, k *Fp) {
 	var A24 Coeff
-	kP.x = fp_1
 	R := *P
 	PdQ := *P
+	kP.x = fp_1
 
 	// Precompyte A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
 	addRdc(&A24.a, &co.c, &co.c)

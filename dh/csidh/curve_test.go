@@ -115,6 +115,13 @@ func TestXMul(t *testing.T) {
 	if expKP.Cmp(&retKP) != 0 {
 		t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
 	}
+
+	// Check if first and second argument can overlap
+	xMul512(&P, &P, &co, &k)
+	retKP = toNormX(&P)
+	if expKP.Cmp(&retKP) != 0 {
+		t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
+	}
 }
 
 //
