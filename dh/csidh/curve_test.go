@@ -8,7 +8,6 @@ import (
 )
 
 // Actual test implementation
-
 func TestXAdd(t *testing.T) {
 	var P, Q, PdQ Point
 	var PaQ Point
@@ -19,6 +18,14 @@ func TestXAdd(t *testing.T) {
 	// E = EllipticCurve(GF(p), [0, A, 0, 1, 0])
 	// where p is CSIDH's 511-bit prime
 
+	checkXAdd := func() {
+		xAdd(&PaQ, &P, &Q, &PdQ)
+		ret := toNormX(&PaQ)
+		if ret.Cmp(&expPaQ) != 0 {
+			t.Errorf("\nExp: %s\nGot: %s", expPaQ.Text(16), ret.Text(16))
+		}
+	}
+
 	expPaQ.SetString("0x41C98C5D7FF118B1A3987733581FD69C0CC27D7B63BCCA525106B9945869C6DAEDAA3D5D9D2679237EF0D013BE68EF12731DBFB26E12576BAD1E824C67ABD125", 0)
 	P.x = toFp("0x5840FD8E0165F7F474260F99337461AF195233F791FABE735EC2634B74A95559568B4CEB23959C8A01C5C57E215D22639868ED840D74FE2BAC04830CF75047AD")
 	P.z = toFp("1")
@@ -26,12 +33,16 @@ func TestXAdd(t *testing.T) {
 	Q.z = toFp("1")
 	PdQ.x = toFp("0x519B1928F752B0B2143C1C23EB247B370DBB5B9C29B9A3A064D7FBC1B67FAC34B6D3DDA0F3CB87C387B425B36F31B93A8E73252BA701927B767A9DE89D5A92AE")
 	PdQ.z = toFp("1")
+	checkXAdd()
 
-	xAdd(&PaQ, &P, &Q, &PdQ)
-	ret := toNormX(&PaQ)
-	if ret.Cmp(&expPaQ) != 0 {
-		t.Errorf("\nExp: %s\nGot: %s", expPaQ.Text(16), ret.Text(16))
-	}
+	expPaQ.SetString("0x5840FD8E0165F7F474260F99337461AF195233F791FABE735EC2634B74A95559568B4CEB23959C8A01C5C57E215D22639868ED840D74FE2BAC04830CF75047AD", 0)
+	P.x = toFp("0x5840FD8E0165F7F474260F99337461AF195233F791FABE735EC2634B74A95559568B4CEB23959C8A01C5C57E215D22639868ED840D74FE2BAC04830CF75047AD")
+	P.z = toFp("1")
+	Q.x = toFp("1") // TODO: it will work with any value here
+	Q.z = toFp("0x0")
+	PdQ.x = toFp(expPaQ.Text(10))
+	PdQ.z = toFp("1")
+	checkXAdd()
 }
 
 func TestXDbl(t *testing.T) {
@@ -62,7 +73,28 @@ func TestXDblAdd_Nominal(t *testing.T) {
 	var P, Q, PdQ Point
 	var PaP, PaQ Point
 	var expPaP, expPaQ big.Int
-	var A, A24 Coeff
+	var A Coeff
+
+	checkXDblAdd := func() {
+		var A24 Coeff
+
+		// A24.a = 2*A.z + A.a
+		addRdc(&A24.a, &A.c, &A.c)
+		addRdc(&A24.a, &A24.a, &A.a)
+		// A24.z = 4*A.z
+		mulRdc(&A24.c, &A.c, &four)
+
+		xDblAdd(&PaP, &PaQ, &P, &Q, &PdQ, &A24)
+		retPaP := toNormX(&PaP)
+		retPaQ := toNormX(&PaQ)
+		if retPaP.Cmp(&expPaP) != 0 {
+			t.Errorf("\nExp: %s\nGot: %s", expPaP.Text(16), retPaP.Text(16))
+		}
+
+		if retPaQ.Cmp(&expPaQ) != 0 {
+			t.Errorf("\nExp: %s\nGot: %s", expPaQ.Text(16), retPaQ.Text(16))
+		}
+	}
 
 	// 2*P
 	expPaP.SetString("0x38F5B37271A3D8FA50107F88045D6F6B08355DD026C02E0306CE5875F47422736AD841B4122B2BD7DE6166BB6498F6A283378FF8250948E834F15CEA2D59A57B", 0)
@@ -76,23 +108,20 @@ func TestXDblAdd_Nominal(t *testing.T) {
 	PdQ.z = toFp("1")
 	A.a = toFp("0x118F955D498D902FD42E5B2926F297CC814CD7649EC5B070295622F97C4A0D9BD34058A7E0E00CB73ED32FCC237F9F6B7D2A15F5CC7C4EC61ECEF80ACBB0EFA4")
 	A.c = toFp("1")
+	checkXDblAdd()
 
-	// A24.a = 2*A.z + A.a
-	addRdc(&A24.a, &A.c, &A.c)
-	addRdc(&A24.a, &A24.a, &A.a)
-	// A24.z = 4*A.z
-	mulRdc(&A24.c, &A.c, &four)
-
-	xDblAdd(&PaP, &PaQ, &P, &Q, &PdQ, &A24)
-	retPaP := toNormX(&PaP)
-	retPaQ := toNormX(&PaQ)
-	if retPaP.Cmp(&expPaP) != 0 {
-		t.Errorf("\nExp: %s\nGot: %s", expPaP.Text(16), retPaP.Text(16))
-	}
-
-	if retPaQ.Cmp(&expPaQ) != 0 {
-		t.Errorf("\nExp: %s\nGot: %s", expPaQ.Text(16), retPaQ.Text(16))
-	}
+	// Case P=value, Q=(x=1, z=0). In this case PaQ==P; PaP=2*P
+	expPaP.SetString("0x38F5B37271A3D8FA50107F88045D6F6B08355DD026C02E0306CE5875F47422736AD841B4122B2BD7DE6166BB6498F6A283378FF8250948E834F15CEA2D59A57B", 0)
+	expPaQ.SetString("0x4FE17B4CC66E85960F57033CD45996C99248DA09DF2E36F8840657B52F74ED8173E0D322FA57D7B4D0EE7F12967BBD59140B42F2626E29167D6419E851E5A4C9", 0)
+	P.x = toFp("0x4FE17B4CC66E85960F57033CD45996C99248DA09DF2E36F8840657B52F74ED8173E0D322FA57D7B4D0EE7F12967BBD59140B42F2626E29167D6419E851E5A4C9")
+	P.z = toFp("1")
+	Q.x = toFp("1")
+	Q.z = toFp("0")
+	PdQ.x = toFp("0x4FE17B4CC66E85960F57033CD45996C99248DA09DF2E36F8840657B52F74ED8173E0D322FA57D7B4D0EE7F12967BBD59140B42F2626E29167D6419E851E5A4C9")
+	PdQ.z = toFp("1")
+	A.a = toFp("0x118F955D498D902FD42E5B2926F297CC814CD7649EC5B070295622F97C4A0D9BD34058A7E0E00CB73ED32FCC237F9F6B7D2A15F5CC7C4EC61ECEF80ACBB0EFA4")
+	A.c = toFp("1")
+	checkXDblAdd()
 }
 
 func TestXDblAdd_vs_xDbl_xAdd(t *testing.T) {
@@ -143,10 +172,27 @@ func TestXDblAdd_vs_xDbl_xAdd(t *testing.T) {
 
 // TODO: test C!=1
 func TestXMul(t *testing.T) {
-	var kP, P Point
+	var P Point
 	var co Coeff
 	var expKP big.Int
 	var k Fp
+
+	checkXMul := func() {
+		var kP Point
+
+		xMul512(&kP, &P, &co, &k)
+		retKP := toNormX(&kP)
+		if expKP.Cmp(&retKP) != 0 {
+			t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
+		}
+
+		// Check if first and second argument can overlap
+		xMul512(&P, &P, &co, &k)
+		retKP = toNormX(&P)
+		if expKP.Cmp(&retKP) != 0 {
+			t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
+		}
+	}
 
 	// Case C=1
 	expKP.SetString("0x582B866603E6FBEBD21FE660FB34EF9466FDEC55FFBCE1073134CC557071147821BBAD225E30F7B2B6790B00ED9C39A29AA043F58AF995E440AFB13DA8E6D788", 0)
@@ -155,28 +201,42 @@ func TestXMul(t *testing.T) {
 	co.a = toFp("0x538F785D52996919C8D5C73D842A0249669B5B6BB05338B74EAE8094AE5009A3BA2D73730F527D7403E8184D9B1FA11C0C4C40E7B328A84874A6DBCE99E1DF92")
 	co.c = toFp("1")
 	k = Fp{0x7A36C930A83EFBD5, 0xD0E80041ED0DDF9F, 0x5AA17134F1B8F877, 0x975711EC94168E51, 0xB3CAD962BED4BAC5, 0x3026DFDD7E4F5687, 0xE67F91AB8EC9C3AF, 0x34671D3FD8C317E7}
+	checkXMul()
 
-	xMul512(&kP, &P, &co, &k)
-	retKP := toNormX(&kP)
-	if expKP.Cmp(&retKP) != 0 {
-		t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
-	}
+	// Check if algorithms works correctly with k=1
+	expKP.SetString("0x1C5CA539C1D5B52DE4750C390C24C05251E8B1D33E48971FA86F5ADDED2D06C8CD31E94887541468BB2925EBD693C9DDFF5BD9508430F25FE28EE30C0760C0FE", 0)
+	P.x = toFp("0x1C5CA539C1D5B52DE4750C390C24C05251E8B1D33E48971FA86F5ADDED2D06C8CD31E94887541468BB2925EBD693C9DDFF5BD9508430F25FE28EE30C0760C0FE")
+	P.z = toFp("1")
+	co.a = toFp("0x538F785D52996919C8D5C73D842A0249669B5B6BB05338B74EAE8094AE5009A3BA2D73730F527D7403E8184D9B1FA11C0C4C40E7B328A84874A6DBCE99E1DF92")
+	co.c = toFp("1")
+	k = Fp{1, 0, 0, 0, 0, 0, 0, 0}
+	checkXMul()
 
-	// Check if first and second argument can overlap
-	xMul512(&P, &P, &co, &k)
-	retKP = toNormX(&P)
-	if expKP.Cmp(&retKP) != 0 {
-		t.Errorf("\nExp: %s\nGot: %s", expKP.Text(16), retKP.Text(16))
-	}
+	// Check if algorithms works correctly with k=0
+	expKP.SetString("0x0", 0)
+	P.x = toFp("0x1C5CA539C1D5B52DE4750C390C24C05251E8B1D33E48971FA86F5ADDED2D06C8CD31E94887541468BB2925EBD693C9DDFF5BD9508430F25FE28EE30C0760C0FE")
+	P.z = toFp("1")
+	co.a = toFp("0x538F785D52996919C8D5C73D842A0249669B5B6BB05338B74EAE8094AE5009A3BA2D73730F527D7403E8184D9B1FA11C0C4C40E7B328A84874A6DBCE99E1DF92")
+	co.c = toFp("1")
+	k = Fp{0, 0, 0, 0, 0, 0, 0, 0}
+	checkXMul()
+
+	// Check if algorithms works correctly with value of k for which few small and high
+	// order bits are 0
+	expKP.SetString("0x41FA86773FF2B048E19C8A6A52AAA0AC13D78B4F616569F1D2851CECB108D9D7560C0E260675BA3DA324AFE11736C257296DEA18A669A5F35C213A5C4B288252", 0)
+	P.x = toFp("0xB5C619C0D2FC8F449285F3A7B74BCF8BB8D5655E4851D123F9D520D2807F2A31716C6AFACC5F42E764D90C7FCE73078A8C5CF8F4CDD1862A4DAE948256EB09B")
+	P.z = toFp("1")
+	co.a = toFp("0x538F785D52996919C8D5C73D842A0249669B5B6BB05338B74EAE8094AE5009A3BA2D73730F527D7403E8184D9B1FA11C0C4C40E7B328A84874A6DBCE99E1DF92")
+	co.c = toFp("1")
+	k = Fp{0, 1, 0, 0, 0, 0, 0, 0}
+	checkXMul()
 }
 
-//
 // func TestMapPoint(t *testing.T) {
 // 	var P, kern Point
 // 	var expPhiP big.Int
 // 	var co Coeff
 // 	var k = uint64(2)
-//
 // 	/*
 // 		k=2
 // 		poly=E.torsion_polynomial(k).monic()
@@ -190,7 +250,6 @@ func TestXMul(t *testing.T) {
 // 		print("phiP: %X"%phi(P)[0])
 // 		co = phi.codomain(); # Convert to montgomery and print A
 // 	*/
-//
 // 	expPhiP.SetString("0x5FEBD68F795F9AEB732ECF0D1507904922F2B0736704E0751EF242B4E191E6F630D83778B5E5681161FD071CDEF7DF4C3A41D0ECEB30E90B119C5BF86C5AB51A", 0)
 // 	P.x = toFp("0x5FD8D226C228FD6AA3CCDCAB931C5D3AA000A46B47041F59D9724E517594F696D38F2CB45C987ACF68BB1057D8D518F926D8F55171F337D05354E0022BC66B23")
 // 	P.z = toFp("1")
@@ -198,7 +257,6 @@ func TestXMul(t *testing.T) {
 // 	co.c = toFp("1")
 // 	kern.x = toFp("0x594F77A49EABBF2A12025BC00E1DBC119CDA674B9FE8A00791724B42FEB7D225C4C9940B01B09B8F00B30B0E961212FB63E42614814E38EC9E5E5B0FEBF98C58")
 // 	kern.z = toFp("1")
-//
 // 	MapPoint(&P, &co, &kern, k)
 // 	retPhiP := toNormX(&P)
 // 	if expPhiP.Cmp(&retPhiP) != 0 {

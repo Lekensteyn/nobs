@@ -3,6 +3,8 @@ package csidh
 // Implements differential arithmetic in P^1 for montgomery
 // curves a mapping: x(P),x(Q),x(P-Q) -> x(P+Q)
 // PaQ = P + Q
+// This algorithms is correctly defined only for cases when
+// P!=inf, Q!=inf, P!=Q and P!=-Q
 func xAdd(PaQ, P, Q, PdQ *Point) {
 	var t0, t1, t2, t3 Fp
 	addRdc(&t0, &P.x, &P.z)
@@ -20,6 +22,7 @@ func xAdd(PaQ, P, Q, PdQ *Point) {
 }
 
 // Q = 2*P on a montgomery curve E(x): x^3 + A*x^2 + x
+// This algorithm is correctly defined only if P!=inf
 func xDbl(Q, P, A *Point) {
 	var t0, t1, t2 Fp
 	addRdc(&t0, &P.x, &P.z)
@@ -38,7 +41,7 @@ func xDbl(Q, P, A *Point) {
 }
 
 // TODO: This can be improved I think (as for SIDH)
-// Pap, PaQ
+// PaP = 2*P; PaQ = P+Q
 func xDblAdd(PaP, PaQ, P, Q, PdQ *Point, A24 *Coeff) {
 	var t0, t1, t2 Fp
 
@@ -70,26 +73,53 @@ func cswapPoint(P1, P2 *Point, choice uint8) {
 }
 
 // A uniform Montgomery ladder
-// kP = [k]P
+// kP = [k]P. xM=x(0 + k*P)
 // TODO: Only one swap should be enough
+// see this: https://eprint.iacr.org/2017/264.pdf
 func xMul512(kP, P *Point, co *Coeff, k *Fp) {
 	var A24 Coeff
-	R := *P
-	PdQ := *P
-	kP.x = fp_1
+
+	var x0 Point = Point{x: fp_1}
+	diff := *P
+	x1 := *P
 
 	// Precompute A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
 	addRdc(&A24.a, &co.c, &co.c)  // A24.a = 2*C
 	addRdc(&A24.a, &A24.a, &co.a) // A24.a = A+2*C
 	mulRdc(&A24.c, &co.c, &four)  // A24.c = 4*C
 
+	var tmp Point = Point{x: co.a, z: co.c}
+
 	for i := uint(512); i > 0; {
 		i--
 		bit := uint8(k[i>>6] >> (i & 63) & 1)
-		cswapPoint(kP, &R, bit)
-		xDblAdd(kP, &R, kP, &R, &PdQ, &A24)
-		cswapPoint(kP, &R, bit)
+		if bit == 1 {
+			//xDblAdd(&x1, &x0, &x0, &x1, P, &A24)
+			xAdd(&x0, &x0, &x1, &diff)
+			xDbl(&x1, &x1, &tmp)
+			//print(i); print(" "); print(bit); print("\n")
+		} else {
+			xAdd(&x1, &x0, &x1, &diff)
+			xDbl(&x0, &x0, &tmp)
+			//print(i); print(" "); print(bit); print("\n")
+		}
+
+		//swap := prevBit ^ bit
+		//prevBit = bit
+
+		//cswapPoint(&R1, &R2, swap)
+		//xDblAdd(&R0, &R2, &R0, &R2, P, &A24)
+
+		/*
+			var dbl Point
+			var tmp Point = Point{x: co.a, z: co.c}
+			xDbl(&dbl, kP, &tmp)
+			xAdd(&R, kP, &R, &PdQ)
+			*kP = dbl
+		*/
 	}
+	//cswapPoint(&R1, &R2, prevBit)
+	*kP = x0
 }
 
 func square_multiply(x, y *Fp, exp uint64) {
