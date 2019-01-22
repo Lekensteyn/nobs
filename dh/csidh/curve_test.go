@@ -58,7 +58,7 @@ func TestXDbl(t *testing.T) {
 }
 
 // TODO: test C!=1
-func TestXDblAdd(t *testing.T) {
+func TestXDblAdd_Nominal(t *testing.T) {
 	var P, Q, PdQ Point
 	var PaP, PaQ Point
 	var expPaP, expPaQ big.Int
@@ -92,6 +92,52 @@ func TestXDblAdd(t *testing.T) {
 
 	if retPaQ.Cmp(&expPaQ) != 0 {
 		t.Errorf("\nExp: %s\nGot: %s", expPaQ.Text(16), retPaQ.Text(16))
+	}
+}
+
+func TestXDblAdd_vs_xDbl_xAdd(t *testing.T) {
+	var P, Q, PdQ Point
+	var PaP1, PaQ1 Point
+	var PaP2, PaQ2 Point
+	var A Point
+	var A24 Coeff
+
+	P.x = toFp("0x4FE17B4CC66E85960F57033CD45996C99248DA09DF2E36F8840657B52F74ED8173E0D322FA57D7B4D0EE7F12967BBD59140B42F2626E29167D6419E851E5A4C9")
+	P.z = toFp("1")
+	Q.x = toFp("0x465047949CD6574FDBE00EA365CAF7A95DC9DEBE96A188823CA8C9DD9F527CF81290D49864F61DF0C08C1D6052139230735CA6CFDBDC1A8820610CCD71861176")
+	Q.z = toFp("1")
+	PdQ.x = toFp("0x49D3B999A0A020B34473568A8F75B5405F2D3BE5A006595015FC6DDC6BED8AB2A51A887B6DC62C64354466865FFD69E50AD37F6F4FBD74119EB65EBC9367B556")
+	PdQ.z = toFp("1")
+	A.x = toFp("0x118F955D498D902FD42E5B2926F297CC814CD7649EC5B070295622F97C4A0D9BD34058A7E0E00CB73ED32FCC237F9F6B7D2A15F5CC7C4EC61ECEF80ACBB0EFA4")
+	A.z = toFp("1")
+
+	// Precompute A24 for xDblAdd
+	// (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
+	addRdc(&A24.a, &A.z, &A.z)
+	addRdc(&A24.a, &A24.a, &A.x)
+	mulRdc(&A24.c, &A.z, &four)
+
+	for i := 0; i < kNumIter; i++ {
+		xAdd(&PaQ2, &P, &Q, &PdQ)
+		xDbl(&PaP2, &P, &A)
+		xDblAdd(&PaP1, &PaQ1, &P, &Q, &PdQ, &A24)
+
+		if !ceqPoint(&PaQ1, &PaQ2) {
+			exp := toNormX(&PaQ1)
+			got := toNormX(&PaQ2)
+			t.Errorf("\nExp: \n\t%s\nGot from xAdd: \n\t%s", exp.Text(16), got.Text(16))
+		}
+
+		if !ceqPoint(&PaP1, &PaP2) {
+			exp := toNormX(&PaP1)
+			got := toNormX(&PaP2)
+			t.Errorf("\nExp: \n\t%s\nGot from xDbl: \n\t%s", exp.Text(16), got.Text(16))
+		}
+
+		// Swap values for next operation
+		PdQ = Q
+		Q = P
+		P = PaP1
 	}
 }
 

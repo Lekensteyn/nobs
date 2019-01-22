@@ -74,6 +74,21 @@ func cmp512(x, y *Fp) int {
 	return len(*x) - len(*y)
 }
 
+// return x==y for Fp
+func ceqFp(l, r *Fp) bool {
+	for idx, _ := range l {
+		if l[idx] != r[idx] {
+			return false
+		}
+	}
+	return true
+}
+
+// return x==y for Point
+func ceqPoint(l, r *Point) bool {
+	return ceqFp(&l.x, &r.x) && ceqFp(&l.z, &r.z)
+}
+
 // return x==y
 func ceq512(x, y *Fp) bool {
 	return cmp512(x, y) == 0
