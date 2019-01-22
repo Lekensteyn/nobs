@@ -16,7 +16,7 @@ func (c *PrivateKey) Generate(rand io.Reader) error {
 
 		for j, _ := range buf {
 			if int8(buf[j]) <= expMax && int8(buf[j]) >= -expMax {
-				c.e[i>>1] |= int8((buf[j] & 0xf) << uint(i%2*4))
+				c.e[i>>1] |= int8((buf[j] & 0xf) << uint((i%2)*4))
 				i = i + 1
 				if i == len(primes) {
 					break
@@ -138,13 +138,13 @@ func (c *PublicKey) groupAction(pub *PublicKey, prv *PrivateKey) {
 	k[1][0] = 4
 
 	for i, v := range primes {
-		t := int8((prv.e[uint(i)>>1] << (uint(i) % 2) * 4) >> 4)
+		t := int8((prv.e[uint(i)>>1] << ((uint(i) % 2) * 4)) >> 4)
 		if t > 0 {
 			e[0][i] = uint8(t)
 			e[1][i] = 0
 			mul512(&k[1], &k[1], v)
 		} else if t < 0 {
-			e[1][i] = uint8(-t) // OZAPTF: OK?
+			e[1][i] = uint8(-t)
 			e[0][i] = 0
 			mul512(&k[0], &k[0], v)
 		} else {
