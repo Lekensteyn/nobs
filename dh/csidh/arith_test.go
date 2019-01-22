@@ -348,7 +348,7 @@ func TestIsSqr(t *testing.T) {
 		copy(nMontFp[:], intGetU64(&nMont))
 		ret := isNonQuadRes(&nMontFp)
 
-		if ret == exp {
+		if ret != exp {
 			toMont(&nMont, false)
 			t.Errorf("Test failed for value %s", nMont.Text(10))
 		}

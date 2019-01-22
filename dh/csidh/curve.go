@@ -1,11 +1,8 @@
 package csidh
 
-// Implements differential arithmetic in P^1
-// for montgomery curves.
-
-// Implements a mapping: x(P),x(Q),x(P-Q) -> x(P+Q)
-// In: P,Q,PdQ
-// Out: PaQ
+// Implements differential arithmetic in P^1 for montgomery
+// curves a mapping: x(P),x(Q),x(P-Q) -> x(P+Q)
+// PaQ = P + Q
 func xAdd(PaQ, P, Q, PdQ *Point) {
 	var t0, t1, t2, t3 Fp
 	addRdc(&t0, &P.x, &P.z)
@@ -22,6 +19,7 @@ func xAdd(PaQ, P, Q, PdQ *Point) {
 	mulRdc(&PaQ.z, &PdQ.x, &t3)
 }
 
+// Q = 2*P on a montgomery curve E(x): x^3 + A*x^2 + x
 func xDbl(Q, P, A *Point) {
 	var t0, t1, t2 Fp
 	addRdc(&t0, &P.x, &P.z)
@@ -71,6 +69,7 @@ func cswapPoint(P1, P2 *Point, choice uint8) {
 	cswap512(&P1.z, &P2.z, choice)
 }
 
+// A uniform Montgomery ladder
 // kP = [k]P
 // TODO: Only one swap should be enough
 func xMul512(kP, P *Point, co *Coeff, k *Fp) {
@@ -80,9 +79,9 @@ func xMul512(kP, P *Point, co *Coeff, k *Fp) {
 	kP.x = fp_1
 
 	// Precompyte A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
-	addRdc(&A24.a, &co.c, &co.c)
-	addRdc(&A24.a, &A24.a, &co.a)
-	mulRdc(&A24.c, &co.c, &four)
+	addRdc(&A24.a, &co.c, &co.c)  // A24.a = 2*C
+	addRdc(&A24.a, &A24.a, &co.a) // A24.a = A+2*C
+	mulRdc(&A24.c, &co.c, &four)  // A24.c = 4*C
 
 	for i := uint(512); i > 0; {
 		i--

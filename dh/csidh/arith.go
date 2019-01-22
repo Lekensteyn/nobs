@@ -75,5 +75,5 @@ func isNonQuadRes(v *Fp) int {
 	// In case b==0 then b-1 will set MSB. Only in such case (b OR ~(b-1))
 	// will result in MSB being not set (logical implication: (b-1)=>b is
 	// false iff (b-1)==0 and b==non-zero, otherwise true).
-	return int(((b | (^(b - 1))) >> 63))
+	return int((b | (^(b - 1))) >> 63)
 }

@@ -16,7 +16,7 @@ func NewPrivateKey() PrivateKey {
 	return PrivateKey{}
 }
 
-func (c PrivateKey) Import(key []byte) bool {
+func (c *PrivateKey) Import(key []byte) bool {
 	if len(key) < len(c.e) {
 		return false
 	}
