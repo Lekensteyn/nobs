@@ -11,6 +11,8 @@ const (
 	kPrimeCount = 74
 	// (2*5+1)^74 is roughly 2^256
 	expMax = int8(5)
+	// size of the limbs, pretty much hardcoded to 64-bit words
+	limbSize = 64
 )
 
 var (

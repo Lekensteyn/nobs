@@ -22,3 +22,6 @@ func csubrdc512(x *Fp, choice uint64)
 
 //go:noescape
 func mul(res, x, y *Fp)
+
+//go:noescape
+func checkBigger(x, y *Fp) bool

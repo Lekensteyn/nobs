@@ -249,7 +249,23 @@ TEXT ·mul(SB),NOSPLIT,$32-24
 	// NOW DI needs to be reduced if > p
 	RET
 
-// This should use Fermats little theorem. a^((p-1)/2) will result
-// in 1 only if a = x^2
-TEXT ·isNotSqr(SB),NOSPLIT,$32-24
-	RET //OZAPTF: TODO
+// Checks if x>y. Returns 1 if true otherwise, 0
+TEXT ·checkBigger(SB),NOSPLIT,$0-24
+	MOVQ	x+ 0(FP), DI	// minuend
+	MOVQ	y+ 8(FP), SI	// subtrahend
+
+	XORQ	AX, AX
+	MOVQ	 0(SI), R8;	SUBQ	 0(DI), R8
+	MOVQ	 8(SI), R8;	SBBQ	 8(DI), R8
+	MOVQ	16(SI), R8;	SBBQ	16(DI), R8
+	MOVQ	24(SI), R8;	SBBQ	24(DI), R8
+	MOVQ	32(SI), R8;	SBBQ	32(DI), R8
+	MOVQ	40(SI), R8;	SBBQ	40(DI), R8
+	MOVQ	48(SI), R8;	SBBQ	48(DI), R8
+	MOVQ	56(SI), R8;	SBBQ	56(DI), R8
+
+	// return borrow
+	ADCQ	AX, AX
+	MOVQ	AX, 24(SP)
+
+	RET

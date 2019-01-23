@@ -1,6 +1,7 @@
 package csidh
 
 import "io"
+import "math/rand" // OZAPTF: to check if this is secure
 
 func (c *PrivateKey) Generate(rand io.Reader) error {
 	for i, _ := range c.e {
@@ -127,6 +128,20 @@ func (c *PublicKey) Validate() bool {
 	}
 }
 
+// TODO: this is weird. How do I know loop will end?
+func randFp(fp *Fp) {
+	mask := uint64(1<<(pbits%limbSize)) - 1
+	for {
+		for i := 0; i < len(fp); i++ {
+			fp[i] = rand.Uint64() // OZAPTF: NON SECURE !!!
+		}
+		fp[len(fp)-1] &= mask
+		if checkBigger(&p, fp) {
+			return
+		}
+	}
+}
+
 func (c *PublicKey) groupAction(pub *PublicKey, prv *PrivateKey) {
 	var k [2]Fp
 	var e [2][kPrimeCount]uint8
@@ -158,7 +173,7 @@ func (c *PublicKey) groupAction(pub *PublicKey, prv *PrivateKey) {
 	for {
 		var P Point
 		var rhs Fp
-		// Randomize P.x
+		randFp(&P.x)
 		P.z = fp_1
 		montEval(&rhs, &A.a, &P.x)
 		sign := isNonQuadRes(&rhs)
@@ -182,7 +197,7 @@ func (c *PublicKey) groupAction(pub *PublicKey, prv *PrivateKey) {
 				}
 
 				xMul512(&K, &P, &A, &cof)
-				if ctEq64(K.z[:], zero[:]) == 1 {
+				if ctEq64(K.z[:], zero[:]) == 0 {
 					MapPoint(&P, &A, &K, v)
 					e[sign][i] = e[sign][i] - 1
 					if e[sign][i] == 0 {
@@ -196,6 +211,7 @@ func (c *PublicKey) groupAction(pub *PublicKey, prv *PrivateKey) {
 		modExpRdc(&A.c, &A.c, &pMin2)
 		mulRdc(&A.a, &A.a, &A.c)
 		A.c = fp_1
+
 		if done[0] && done[1] {
 			break
 		}

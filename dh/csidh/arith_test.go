@@ -323,7 +323,7 @@ func TestModExp(t *testing.T) {
 }
 
 // Test uses Euler's Criterion
-func TestIsSqr(t *testing.T) {
+func TestIsNonQuadRes(t *testing.T) {
 	var n, nMont big.Int
 	var pm1o2, rawP big.Int
 	var nMontFp Fp
@@ -352,6 +352,20 @@ func TestIsSqr(t *testing.T) {
 			toMont(&nMont, false)
 			t.Errorf("Test failed for value %s", nMont.Text(10))
 		}
+	}
+}
+
+func TestCheckSmaller(t *testing.T) {
+	if checkBigger(&pMin1, &p) == true {
+		t.Error("p>pMin1")
+	}
+
+	if !checkBigger(&p, &pMin1) {
+		t.Error("pMin1<p")
+	}
+
+	if checkBigger(&p, &p) {
+		t.Error("p==p")
 	}
 }
 

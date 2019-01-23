@@ -1,5 +1,26 @@
 package csidh
 
+import "fmt"
+
+func fp_print(v Fp) {
+	for _, v := range v {
+		fmt.Printf("0x%016X, ", v)
+	}
+	fmt.Println()
+}
+
+func p_print(s string, p Point) {
+	fmt.Println(s)
+	fp_print(p.x)
+	fp_print(p.z)
+}
+
+func c_print(s string, p Coeff) {
+	fmt.Println(s)
+	fp_print(p.a)
+	fp_print(p.c)
+}
+
 // Implements differential arithmetic in P^1 for montgomery
 // curves a mapping: x(P),x(Q),x(P-Q) -> x(P+Q)
 // PaQ = P + Q
@@ -76,20 +97,18 @@ func cswapPoint(P1, P2 *Point, choice uint8) {
 // kP = [k]P. xM=x(0 + k*P)
 // TODO: Only one swap should be enough
 // see this: https://eprint.iacr.org/2017/264.pdf
-func xMul512(kP, P *Point, co *Coeff, k *Fp) {
+func xMul512_NON_CONST(kP, P *Point, co *Coeff, k *Fp) {
 	var A24 Coeff
 
 	var x0 Point = Point{x: fp_1}
-	diff := *P
 	x1 := *P
+	diff := *P
 
 	// Precompute A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
 	addRdc(&A24.a, &co.c, &co.c)  // A24.a = 2*C
 	addRdc(&A24.a, &A24.a, &co.a) // A24.a = A+2*C
 	mulRdc(&A24.c, &co.c, &four)  // A24.c = 4*C
-
 	var tmp Point = Point{x: co.a, z: co.c}
-
 	for i := uint(512); i > 0; {
 		i--
 		bit := uint8(k[i>>6] >> (i & 63) & 1)
@@ -103,32 +122,48 @@ func xMul512(kP, P *Point, co *Coeff, k *Fp) {
 			xDbl(&x0, &x0, &tmp)
 			//print(i); print(" "); print(bit); print("\n")
 		}
-
-		//swap := prevBit ^ bit
-		//prevBit = bit
-
-		//cswapPoint(&R1, &R2, swap)
-		//xDblAdd(&R0, &R2, &R0, &R2, P, &A24)
-
-		/*
-			var dbl Point
-			var tmp Point = Point{x: co.a, z: co.c}
-			xDbl(&dbl, kP, &tmp)
-			xAdd(&R, kP, &R, &PdQ)
-			*kP = dbl
-		*/
 	}
-	//cswapPoint(&R1, &R2, prevBit)
 	*kP = x0
+}
+func xMul512_CONST(kP, P *Point, co *Coeff, k *Fp) {
+	var A24 Coeff
+	R := *P
+	PdQ := *P
+	kP.x = fp_1
+	kP.z = Fp{}
+
+	// Precompyte A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
+	addRdc(&A24.a, &co.c, &co.c)
+	addRdc(&A24.a, &A24.a, &co.a)
+	mulRdc(&A24.c, &co.c, &four)
+
+	skip := true
+	for i := uint(512); i > 0; {
+		i--
+		bit := uint8(k[i>>6] >> (i & 63) & 1)
+		// tmp: OZAPTF: TO BE REMOVED
+		skip = skip && (bit == 0)
+		if skip {
+			continue
+		}
+		cswapPoint(kP, &R, bit)
+		xDblAdd(kP, &R, kP, &R, &PdQ, &A24)
+		cswapPoint(kP, &R, bit)
+	}
+}
+
+// OZAPTF: xMul512 is to be implemented
+func xMul512(kP, P *Point, co *Coeff, k *Fp) {
+	xMul512_CONST(kP, P, co, k)
 }
 
 func square_multiply(x, y *Fp, exp uint64) {
-	var res1 = r_squared_mod_p
-	var res2 = r_squared_mod_p
+	var res1 = fp_1
+	var res2 = fp_1
 
 	for i := exp; i != 0; i >>= 1 {
 		// TODO: that's not constant time
-		if (exp & 1) == 1 {
+		if (i & 1) == 1 {
 			mulRdc(&res1, &res1, x)
 			mulRdc(&res2, &res2, y)
 		}
@@ -151,8 +186,9 @@ func MapPoint(img *Point, co *Coeff, kern *Point, order uint64) {
 	// Aed.c = co.a - 2*co.c
 	// Aed.a*X^2 + Y^2 = 1 + Aed.c*X^2*Y^2
 	addRdc(&Aed.c, &co.c, &co.c)
-	addRdc(&Aed.a, &co.a, &co.c)
+	addRdc(&Aed.a, &co.a, &Aed.c) // OZAPTF: good??
 	subRdc(&Aed.c, &co.a, &Aed.c)
+	//c_print("", Aed)
 
 	// Transfer point to twisted Edwards YZ-coordinates
 	// (X:Z)->(Y:Z) = (X-Z : X+Z)
@@ -167,9 +203,9 @@ func MapPoint(img *Point, co *Coeff, kern *Point, order uint64) {
 	addRdc(&Q.x, &t0, &t1)
 	subRdc(&Q.z, &t0, &t1)
 
-	var M [3]Point
+	var M [3]Point = [3]Point{*kern}
 	var coTmp = Point{x: co.a, z: co.c} // OZAPTF: crap
-	xDbl(&M[1], &coTmp, kern)
+	xDbl(&M[1], kern, &coTmp)
 
 	// TODO: Not constant time
 	for i := uint64(1); i < uint64(order/2); i++ {
@@ -187,15 +223,18 @@ func MapPoint(img *Point, co *Coeff, kern *Point, order uint64) {
 		mulRdc(&Q.x, &Q.x, &t2)
 		subRdc(&t2, &t0, &t1)
 		mulRdc(&Q.z, &Q.z, &t2)
+
 	}
 
 	mulRdc(&Q.x, &Q.x, &Q.x)
 	mulRdc(&Q.z, &Q.z, &Q.z)
 	mulRdc(&img.x, &img.x, &Q.x)
 	mulRdc(&img.z, &img.z, &Q.z)
+	//c_print("", Aed)
 
 	// Aed.a^order and Aed.c^order
 	square_multiply(&Aed.a, &Aed.c, order)
+	//c_print("", Aed)
 
 	// prod^8
 	mulRdc(&prod.x, &prod.x, &prod.x)
