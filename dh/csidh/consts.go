@@ -12,7 +12,11 @@ const (
 	// (2*5+1)^74 is roughly 2^256
 	expMax = int8(5)
 	// size of the limbs, pretty much hardcoded to 64-bit words
-	limbSize = 64
+	limbBitSize = 64
+	// size of the limbs in bytes
+	limbByteSize = limbBitSize >> 3
+	// Number of limbs for a field element
+	numWords = 8
 )
 
 var (

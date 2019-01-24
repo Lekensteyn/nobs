@@ -154,7 +154,7 @@ func xMul512_CONST(kP, P *Point, co *Coeff, k *Fp) {
 
 // OZAPTF: xMul512 is to be implemented
 func xMul512(kP, P *Point, co *Coeff, k *Fp) {
-	xMul512_CONST(kP, P, co, k)
+	xMul512_NON_CONST(kP, P, co, k)
 }
 
 func square_multiply(x, y *Fp, exp uint64) {

@@ -130,7 +130,7 @@ func (c *PublicKey) Validate() bool {
 
 // TODO: this is weird. How do I know loop will end?
 func randFp(fp *Fp) {
-	mask := uint64(1<<(pbits%limbSize)) - 1
+	mask := uint64(1<<(pbits%limbBitSize)) - 1
 	for {
 		for i := 0; i < len(fp); i++ {
 			fp[i] = rand.Uint64() // OZAPTF: NON SECURE !!!
@@ -225,12 +225,14 @@ func (c *PublicKey) Generate(prv *PrivateKey) {
 }
 
 // todo: probably should be similar to some other interface
-func (c *PublicKey) DeriveSecret(pub *PublicKey, prv *PrivateKey) bool {
-	if !c.Validate() {
-		// TODO: randomize out->A
+func (c *PublicKey) DeriveSecret(out []byte, pub *PublicKey, prv *PrivateKey) bool {
+	var ss PublicKey
+	if !pub.Validate() {
+		randFp(&pub.A)
 		return false
 	}
-	c.groupAction(pub, prv)
+	ss.groupAction(pub, prv)
+	ss.Export(out)
 	return true
 }
 

@@ -36,15 +36,30 @@ func (c PrivateKey) Export(out []byte) bool {
 	return true
 }
 
-// PublicKey
 func NewPublicKey() PublicKey {
 	return PublicKey{}
 }
 
-func (c PublicKey) Import(key []byte) {
-
+func (c *PublicKey) Import(key []byte) bool {
+	if len(key) != numWords*limbByteSize {
+		return false
+	}
+	for i := 0; i < len(key); i++ {
+		j := i / limbByteSize
+		k := uint64(i % 8)
+		c.A[j] |= uint64(key[i]) << (8 * k)
+	}
+	return true
 }
 
-func (c PublicKey) Export() []byte {
-	return nil
+func (c *PublicKey) Export(out []byte) bool {
+	if len(out) != numWords*limbByteSize {
+		return false
+	}
+	for i := 0; i < len(out); i++ {
+		j := i / limbByteSize
+		k := uint64(i % 8)
+		out[i] = byte(c.A[j] >> (8 * k))
+	}
+	return true
 }
