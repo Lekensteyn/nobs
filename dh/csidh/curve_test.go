@@ -1,7 +1,6 @@
 package csidh
 
 import (
-	// "fmt"
 	"math/big"
 	"testing"
 	//        mrand "math/rand"

@@ -88,6 +88,7 @@ func ctEq64(x, y []uint64) uint {
 }
 
 // Key validation
+// OZAPTF: To be checked
 func (c *PublicKey) Validate() bool {
 	var A = Coeff{a: c.A, c: fp_1}
 	var zero [8]uint64

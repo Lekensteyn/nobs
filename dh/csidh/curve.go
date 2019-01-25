@@ -97,35 +97,7 @@ func cswapPoint(P1, P2 *Point, choice uint8) {
 // kP = [k]P. xM=x(0 + k*P)
 // TODO: Only one swap should be enough
 // see this: https://eprint.iacr.org/2017/264.pdf
-func xMul512_NON_CONST(kP, P *Point, co *Coeff, k *Fp) {
-	var A24 Coeff
-
-	var x0 Point = Point{x: fp_1}
-	x1 := *P
-	diff := *P
-
-	// Precompute A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
-	addRdc(&A24.a, &co.c, &co.c)  // A24.a = 2*C
-	addRdc(&A24.a, &A24.a, &co.a) // A24.a = A+2*C
-	mulRdc(&A24.c, &co.c, &four)  // A24.c = 4*C
-	var tmp Point = Point{x: co.a, z: co.c}
-	for i := uint(512); i > 0; {
-		i--
-		bit := uint8(k[i>>6] >> (i & 63) & 1)
-		if bit == 1 {
-			//xDblAdd(&x1, &x0, &x0, &x1, P, &A24)
-			xAdd(&x0, &x0, &x1, &diff)
-			xDbl(&x1, &x1, &tmp)
-			//print(i); print(" "); print(bit); print("\n")
-		} else {
-			xAdd(&x1, &x0, &x1, &diff)
-			xDbl(&x0, &x0, &tmp)
-			//print(i); print(" "); print(bit); print("\n")
-		}
-	}
-	*kP = x0
-}
-func xMul512_CONST(kP, P *Point, co *Coeff, k *Fp) {
+func xMul512(kP, P *Point, co *Coeff, k *Fp) {
 	var A24 Coeff
 	R := *P
 	PdQ := *P
@@ -137,24 +109,13 @@ func xMul512_CONST(kP, P *Point, co *Coeff, k *Fp) {
 	addRdc(&A24.a, &A24.a, &co.a)
 	mulRdc(&A24.c, &co.c, &four)
 
-	skip := true
 	for i := uint(512); i > 0; {
 		i--
 		bit := uint8(k[i>>6] >> (i & 63) & 1)
-		// tmp: OZAPTF: TO BE REMOVED
-		skip = skip && (bit == 0)
-		if skip {
-			continue
-		}
 		cswapPoint(kP, &R, bit)
 		xDblAdd(kP, &R, kP, &R, &PdQ, &A24)
 		cswapPoint(kP, &R, bit)
 	}
-}
-
-// OZAPTF: xMul512 is to be implemented
-func xMul512(kP, P *Point, co *Coeff, k *Fp) {
-	xMul512_NON_CONST(kP, P, co, k)
 }
 
 func square_multiply(x, y *Fp, exp uint64) {
