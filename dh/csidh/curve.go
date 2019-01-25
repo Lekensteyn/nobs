@@ -1,26 +1,5 @@
 package csidh
 
-import "fmt"
-
-func fp_print(v Fp) {
-	for _, v := range v {
-		fmt.Printf("0x%016X, ", v)
-	}
-	fmt.Println()
-}
-
-func p_print(s string, p Point) {
-	fmt.Println(s)
-	fp_print(p.x)
-	fp_print(p.z)
-}
-
-func c_print(s string, p Coeff) {
-	fmt.Println(s)
-	fp_print(p.a)
-	fp_print(p.c)
-}
-
 // Implements differential arithmetic in P^1 for montgomery
 // curves a mapping: x(P),x(Q),x(P-Q) -> x(P+Q)
 // PaQ = P + Q
