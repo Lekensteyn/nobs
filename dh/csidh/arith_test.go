@@ -2,7 +2,6 @@ package csidh
 
 import (
 	"math/big"
-	//	crand "crypto/rand"
 	mrand "math/rand"
 	"testing"
 )

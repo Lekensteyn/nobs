@@ -2,7 +2,6 @@ package csidh
 
 import (
 	crand "crypto/rand"
-	"fmt"
 	mrand "math/rand"
 	"testing"
 )
@@ -47,15 +46,12 @@ func TestEphemeralKeyExchange(t *testing.T) {
 	prv1.Import(prv_bytes1)
 	pub1.Generate(&prv1)
 	pub1.Export(buf[:])
-	fmt.Printf("%X\n", buf)
 
 	prv2.Import(prv_bytes2)
 	pub2.Generate(&prv2)
 	pub2.Export(buf[:])
-	fmt.Printf("%X\n", buf)
 
 	pub1.DeriveSecret(ss[:], &pub2, &prv1)
-	fmt.Printf("%X\n", ss)
 }
 
 func TestPrivateKeyExportImport(t *testing.T) {
@@ -100,7 +96,25 @@ func BenchmarkGeneratePrivate(b *testing.B) {
 
 func BenchmarkValidate(b *testing.B) {
 	var pub PublicKey
+	var prv PrivateKey
 	for n := 0; n < b.N; n++ {
-		pub.Validate()
+		prv.Generate(crand.Reader)
+		pub.Generate(&prv)
+		pub.validate()
+	}
+}
+
+func BenchmarkEphemeralKeyExchange(b *testing.B) {
+	var ss [64]uint8
+	var prv1, prv2 PrivateKey
+	var pub1, pub2 PublicKey
+	for n := 0; n < b.N; n++ {
+		prv1.Generate(crand.Reader)
+		pub1.Generate(&prv1)
+
+		prv2.Generate(crand.Reader)
+		pub2.Generate(&prv2)
+
+		pub1.DeriveSecret(ss[:], &pub2, &prv1)
 	}
 }

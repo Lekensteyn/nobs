@@ -1,31 +1,57 @@
 package csidh
 
 import "io"
-import "math/rand" // OZAPTF: to check if this is secure
+import "crypto/rand"
 
-func (c *PrivateKey) Generate(rand io.Reader) error {
-	for i, _ := range c.e {
-		c.e[i] = 0
-	}
-
-	for i := 0; i < len(primes); {
-		var buf [64]byte
-		_, err := io.ReadFull(rand, buf[:])
-		if err != nil {
-			return err
+// TODO: this is weird. How do I know loop will end?
+func randFp(fp *Fp) {
+	mask := uint64(1<<(pbits%limbBitSize)) - 1
+	for {
+		*fp = Fp{}
+		var buf [len(fp) * limbByteSize]byte
+		if _, err := io.ReadFull(rand.Reader, buf[:]); err != nil {
+			// OZAPTF: to be re-done (AES_CTR)
+			panic("Can't read random number")
 		}
 
-		for j, _ := range buf {
-			if int8(buf[j]) <= expMax && int8(buf[j]) >= -expMax {
-				c.e[i>>1] |= int8((buf[j] & 0xf) << uint((i%2)*4))
-				i = i + 1
-				if i == len(primes) {
-					break
-				}
-			}
+		for i := 0; i < len(buf); i++ {
+			j := i / limbByteSize
+			k := uint(i % 8)
+			fp[j] |= uint64(buf[i]) << (8 * k)
+		}
+
+		fp[len(fp)-1] &= mask
+		if checkBigger(&p, fp) {
+			return
 		}
 	}
-	return nil
+}
+
+// assumes len(x) == len(y)
+// return 1 if equal 0 if not
+// OZAPTF: I actually need to know if x is zero
+func ctEq64(x, y []uint64) uint {
+	var t uint64
+	var h, l uint64
+	for i := 0; i < len(x); i++ {
+		t |= x[i] ^ y[i]
+	}
+
+	h = ((t >> 32) - 1) >> 63
+	l = ((t & 0xFFFFFFFF) - 1) >> 63
+	return uint(h & l & 1)
+}
+
+// evaluates x^3 + Ax^2 + x
+func montEval(res, A, x *Fp) {
+	var t Fp
+
+	*res = *x
+	mulRdc(res, res, res)
+	mulRdc(&t, A, x)
+	addRdc(res, res, &t)
+	addRdc(res, res, &fp_1)
+	mulRdc(res, res, x)
 }
 
 // Assumes lower<upper
@@ -60,44 +86,45 @@ func cofactorMultiples(P []Point, A *Coeff, lower, upper uint64) {
 	cofactorMultiples(P, A, mid, upper)
 }
 
-// evaluates x^3 + Ax^2 + x
-func montEval(res, A, x *Fp) {
-	var t Fp
-
-	*res = *x
-	mulRdc(res, res, res)
-	mulRdc(&t, A, x)
-	addRdc(res, res, &t)
-	addRdc(res, res, &fp_1)
-	mulRdc(res, res, x)
-}
-
-// assumes len(x) == len(y)
-// return 1 if equal 0 if not
-// OZAPTF: I actually need to know if x is zero
-func ctEq64(x, y []uint64) uint {
-	var t uint64
-	var h, l uint64
-	for i := 0; i < len(x); i++ {
-		t |= x[i] ^ y[i]
+func (c *PrivateKey) Generate(rand io.Reader) error {
+	for i, _ := range c.e {
+		c.e[i] = 0
 	}
 
-	h = ((t >> 32) - 1) >> 63
-	l = ((t & 0xFFFFFFFF) - 1) >> 63
-	return uint(h & l & 1)
+	for i := 0; i < len(primes); {
+		var buf [64]byte
+		_, err := io.ReadFull(rand, buf[:])
+		if err != nil {
+			return err
+		}
+
+		for j, _ := range buf {
+			if int8(buf[j]) <= expMax && int8(buf[j]) >= -expMax {
+				c.e[i>>1] |= int8((buf[j] & 0xf) << uint((i%2)*4))
+				i = i + 1
+				if i == len(primes) {
+					break
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // Key validation
 // OZAPTF: To be checked
-func (c *PublicKey) Validate() bool {
+func (c *PublicKey) validate() bool {
 	var A = Coeff{a: c.A, c: fp_1}
 	var zero [8]uint64
+
+	// TODO: make sure curve is nonsingular
+	// -- this needs to be tested before implementing
 
 	// TODO: how long it will loop?
 	for {
 		// OZAPTF: heap?
 		var P [kPrimeCount]Point
-		/* TODO: fp_random(P.x) to port */
+		randFp(&P[0].x)
 		P[0].z = fp_1
 
 		/* maximal 2-power in p+1 */
@@ -125,20 +152,6 @@ func (c *PublicKey) Validate() bool {
 					return true
 				}
 			}
-		}
-	}
-}
-
-// TODO: this is weird. How do I know loop will end?
-func randFp(fp *Fp) {
-	mask := uint64(1<<(pbits%limbBitSize)) - 1
-	for {
-		for i := 0; i < len(fp); i++ {
-			fp[i] = rand.Uint64() // OZAPTF: NON SECURE !!!
-		}
-		fp[len(fp)-1] &= mask
-		if checkBigger(&p, fp) {
-			return
 		}
 	}
 }
@@ -228,10 +241,11 @@ func (c *PublicKey) Generate(prv *PrivateKey) {
 // todo: probably should be similar to some other interface
 func (c *PublicKey) DeriveSecret(out []byte, pub *PublicKey, prv *PrivateKey) bool {
 	var ss PublicKey
-	if !pub.Validate() {
-		randFp(&pub.A)
-		return false
-	}
+	// TODO: validation doesn't work yet correctly
+	//	if !pub.validate() {
+	//		randFp(&pub.A)
+	//		return false
+	//	}
 	ss.groupAction(pub, prv)
 	ss.Export(out)
 	return true
