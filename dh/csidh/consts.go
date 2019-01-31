@@ -17,6 +17,13 @@ const (
 	limbByteSize = limbBitSize >> 3
 	// Number of limbs for a field element
 	numWords = 8
+
+	// PrivateKeySize is a size of cSIDH/512 private key in bytes.
+	PrivateKeySize = 37
+	// PublicKeySize is a size of cSIDH/512 public key in bytes.
+	PublicKeySize = 64
+	// SharedSecretSize is a size of cSIDH/512 shared secret in bytes.
+	SharedSecretSize = 64
 )
 
 var (
@@ -90,6 +97,7 @@ var (
 		0x229517D251910514, 0x06F26E6577649E80,
 	}
 
+	// 4 * sqrt(p)
 	fourSqrtP = Fp{
 		0x85E2579C786882CF, 0x4E3433657E18DA95,
 		0x850AE5507965A0B3, 0xA15BC4E676475964,
