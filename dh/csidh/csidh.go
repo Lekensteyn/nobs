@@ -61,7 +61,6 @@ func montEval(res, A, x *Fp) {
 /* divide and conquer is much faster than doing it naively,
  * but uses more memory. */
 func cofactorMultiples(P []Point, A *Coeff, lower, upper uint64) {
-	// OZAPTF: Needed?
 	if upper-lower == 1 {
 		return
 	}
@@ -71,7 +70,7 @@ func cofactorMultiples(P []Point, A *Coeff, lower, upper uint64) {
 	var cl = Fp{1}
 	var cu = Fp{1}
 
-	// TODO: one loop would be OK
+	// TODO: one loop would be OK?
 	for i := lower; i < mid; i++ {
 		mul512(&cu, &cu, primes[i])
 	}
@@ -82,6 +81,7 @@ func cofactorMultiples(P []Point, A *Coeff, lower, upper uint64) {
 	xMul512(&P[mid], &P[lower], A, &cu)
 	xMul512(&P[lower], &P[lower], A, &cl)
 
+	// TODO: this function call is not needed
 	cofactorMultiples(P, A, lower, mid)
 	cofactorMultiples(P, A, mid, upper)
 }
@@ -120,7 +120,9 @@ func (c *PublicKey) validate() bool {
 	// TODO: make sure curve is nonsingular
 	// -- this needs to be tested before implementing
 
-	// TODO: how long it will loop?
+	// P must have big enough order to prove supersingularity. The
+	// probability that this loop will be repeated is negligible.
+	// TODO: do max 2 loops
 	for {
 		// OZAPTF: heap?
 		var P [kPrimeCount]Point
@@ -132,9 +134,12 @@ func (c *PublicKey) validate() bool {
 		var t = Point{x: A.a, z: A.c}
 		xDbl(&P[0], &P[0], &t)
 		xDbl(&P[0], &P[0], &t)
+
+		// OZAPTF:that's wrong?
 		A.a = t.x
 		A.c = t.z
 
+		// TODO: this can be mixed with loop below
 		cofactorMultiples(P[:], &A, 0, kPrimeCount)
 		var order = Fp{1}
 
@@ -148,6 +153,7 @@ func (c *PublicKey) validate() bool {
 				}
 				mul512(&order, &order, primes[i])
 
+				// Checks wether t>4*sqrt(p)
 				if sub512(&t, &fourSqrtP, &order) != 0 {
 					return true
 				}
@@ -239,6 +245,7 @@ func (c *PublicKey) Generate(prv *PrivateKey) {
 }
 
 // todo: probably should be similar to some other interface
+// OZAPTF: should be attribute of private key
 func (c *PublicKey) DeriveSecret(out []byte, pub *PublicKey, prv *PrivateKey) bool {
 	var ss PublicKey
 	// TODO: validation doesn't work yet correctly
